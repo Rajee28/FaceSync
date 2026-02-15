@@ -1,0 +1,10 @@
+streamlit
+deepface
+tf-keras
+numpy
+pandas
+schedule
+python-dotenv
+pillow
+opencv-python-headless
+twilio
