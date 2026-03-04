@@ -74,7 +74,7 @@ The system includes a comprehensive alert module that sends notifications via **
 | Time | Job | Description |
 |------|-----|-------------|
 | 07:55 AM | Absent Check | Reminds staff who haven't punched in |
-| 12:45 PM | Out-Punch Check | Reminds staff who haven't punched out |
+| 12:25 PM | Out-Punch Check | Reminds staff who haven't punched out |
 | 06:00 PM | Daily Report | Sends attendance summary to admin |
 
 ### Alert Configuration

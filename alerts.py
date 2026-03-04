@@ -452,7 +452,7 @@ Thank you!"""
 
 def job_out_punch_check():
     """
-    Run at 12:45 PM. Check who hasn't punched out.
+    Run at 12:25 PM. Check who hasn't punched out.
     Useful for half-day tracking or lunch break reminders.
     """
     logger.info("Running Out Punch Check Job...")
@@ -630,14 +630,14 @@ def run_scheduler():
     schedule.every().day.at("07:55").do(job_absent_check)
 
     # Midday out-punch check
-    schedule.every().day.at("12:45").do(job_out_punch_check)
+    schedule.every().day.at("12:25").do(job_out_punch_check)
 
     # End of day report
     schedule.every().day.at("16:00").do(job_end_of_day_report)
 
     logger.info("Scheduler started. Scheduled jobs:")
     logger.info("  - 07:55 AM: Absent check")
-    logger.info("  - 12:45 PM: Out-punch check")
+    logger.info("  - 12:25 PM: Out-punch check")
     logger.info("  - 04:00 PM: Daily report")
 
     while True:
