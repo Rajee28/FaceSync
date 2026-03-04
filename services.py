@@ -36,6 +36,41 @@ class StaffService:
         return df
 
     @staticmethod
+    def update_staff(staff_id, name, mobile, email, dept, role):
+        """Update an existing staff member's details (except face_encoding)."""
+        conn = database.get_connection()
+        c = conn.cursor()
+        try:
+            c.execute(
+                """
+                UPDATE staff
+                SET name=?, mobile_number=?, email=?, department=?, role=?
+                WHERE staff_id=?
+            """,
+                (name, mobile, email, dept, role, staff_id),
+            )
+            conn.commit()
+            return True, "Staff updated successfully"
+        except Exception as e:
+            return False, f"Error updating staff: {e}"
+        finally:
+            conn.close()
+
+    @staticmethod
+    def delete_staff(staff_id):
+        """Remove a staff record from the database."""
+        conn = database.get_connection()
+        c = conn.cursor()
+        try:
+            c.execute("DELETE FROM staff WHERE staff_id=?", (staff_id,))
+            conn.commit()
+            return True, "Staff deleted successfully"
+        except Exception as e:
+            return False, f"Error deleting staff: {e}"
+        finally:
+            conn.close()
+
+    @staticmethod
     def get_staff_for_face_recognition():
         """Get staff data for face recognition."""
         conn = database.get_connection()

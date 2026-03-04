@@ -4,7 +4,7 @@ import alerts
 import config
 from datetime import datetime
 
-st.set_page_config(page_title="Staff Attendance System", page_icon="📍", layout="wide")
+st.set_page_config(page_title="FaceSync", page_icon="📍", layout="wide")
 
 # Initialize DB on first load (safe to call multiple times)
 if "db_initialized" not in st.session_state:
@@ -28,7 +28,7 @@ def start_scheduler_service():
 
 start_scheduler_service()
 
-st.title("Staff Attendance Management System")
+st.title("FaceSync: Smart Staff Attendance Tracker")
 
 st.sidebar.title("Navigation")
 st.sidebar.info("Select a page from the usage menu above.")

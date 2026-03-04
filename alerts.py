@@ -71,7 +71,7 @@ def send_email_alert(subject: str, message: str, recipients: list) -> dict:
                     <p><strong>Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
                 <div class="footer">
-                    <p>This is an automated message from the Staff Attendance System.</p>
+                    <p>This is an automated message from the FaceSync.</p>
                 </div>
             </div>
         </body>
@@ -325,11 +325,11 @@ def send_alert(
     # Determine which platforms to use
     if platforms is None:
         platforms = []
-        if ENABLE_EMAIL_ALERTS:
+        if config.ENABLE_EMAIL_ALERTS:
             platforms.append("email")
-        if ENABLE_SMS_ALERTS:
+        if config.ENABLE_SMS_ALERTS:
             platforms.append("sms")
-        if ENABLE_WHATSAPP_ALERTS:
+        if config.ENABLE_WHATSAPP_ALERTS:
             platforms.append("whatsapp")
 
     # Send via Email
@@ -402,42 +402,43 @@ def job_absent_check():
                 )
 
         if absentees:
-            names = [s["name"] for s in absentees]
-            emails = [s["email"] for s in absentees if s["email"]]
-            phones = [s["phone"] for s in absentees if s["phone"]]
+            # send a personalized alert for each absent staff member
+            for s in absentees:
+                name = s["name"]
+                email = s.get("email")
+                phone = s.get("phone")
 
-            # Full message for email
-            full_message = f"""⏰ Attendance Reminder
+                # construct messages specific to this staff member
+                full_message = f"""⏰ Attendance Reminder
 
-Hello! This is a friendly reminder to punch in for today ({today.strftime('%B %d, %Y')}).
-
-Staff pending punch-in: {', '.join(names)}
+Hello {name}! This is a friendly reminder to punch in for today ({today.strftime('%B %d, %Y')}).
 
 Please mark your attendance as soon as possible.
 
 Thank you!"""
 
-            # Shorter message for SMS/WhatsApp (under 160 characters for trial accounts)
-            sms_message = f"⏰ Attendance Reminder: Please punch in today ({today.strftime('%B %d, %Y')}). Pending: {', '.join(names)}"
+                sms_message = (
+                    f"⏰ {name}, please punch in today ({today.strftime('%B %d, %Y')})."
+                )
 
-            send_alert(
-                message=full_message,
-                recipients=emails,
-                subject="⏰ Attendance Reminder - Please Punch In",
-                phone_numbers=phones,
-                platforms=(
-                    ["email", "sms", "whatsapp"]
-                    if config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
-                    else ["email"]
-                ),
-            )
+                # email only
+                if email:
+                    send_alert(
+                        message=full_message,
+                        recipients=[email],
+                        subject="⏰ Attendance Reminder - Please Punch In",
+                        phone_numbers=None,
+                        platforms=["email"],
+                    )
 
-            # Send shorter SMS separately if needed
-            if phones and (config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS):
-                if config.ENABLE_SMS_ALERTS:
-                    send_sms_alert(sms_message, phones)
-                if config.ENABLE_WHATSAPP_ALERTS:
-                    send_whatsapp_alert(sms_message, phones)
+                # phone alerts separately with shorter text
+                if phone and (
+                    config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
+                ):
+                    if config.ENABLE_SMS_ALERTS:
+                        send_sms_alert(sms_message, [phone])
+                    if config.ENABLE_WHATSAPP_ALERTS:
+                        send_whatsapp_alert(sms_message, [phone])
 
             logger.info(f"Sent absent check alerts to {len(absentees)} staff member(s)")
         else:
@@ -474,51 +475,38 @@ def job_out_punch_check():
         staff_pending_out = c.fetchall()
 
         if staff_pending_out:
-            pending_list = []
-            emails = []
-            phones = []
-
+            # notify each person individually
             for row in staff_pending_out:
-                pending_list.append({"name": row[1], "in_time": row[4]})
-                if row[2]:  # email
-                    emails.append(row[2])
-                if row[3]:  # phone
-                    phones.append(row[3])
+                name = row[1]
+                email = row[2]
+                phone = row[3]
 
-            names = [p["name"] for p in pending_list]
+                full_message = f"""📤 Punch-Out Reminder
 
-            # Full message for email
-            full_message = f"""📤 Punch-Out Reminder
-
-Hello! This is a reminder that you haven't punched out yet for today ({today.strftime('%B %d, %Y')}).
-
-Staff pending punch-out: {', '.join(names)}
+Hello {name}! This is a reminder that you haven't punched out yet for today ({today.strftime('%B %d, %Y')}).
 
 If you're leaving for half-day or lunch, please remember to punch out.
 
 Thank you!"""
 
-            # Shorter message for SMS/WhatsApp
-            sms_message = f"📤 Punch-Out Reminder: Please punch out today ({today.strftime('%B %d, %Y')}). Pending: {', '.join(names)}"
+                sms_message = f"📤 {name}, please punch out today ({today.strftime('%B %d, %Y')})."
 
-            send_alert(
-                message=full_message,
-                recipients=emails,
-                subject="📤 Reminder - Please Punch Out",
-                phone_numbers=phones,
-                platforms=(
-                    ["email", "sms", "whatsapp"]
-                    if config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
-                    else ["email"]
-                ),
-            )
+                if email:
+                    send_alert(
+                        message=full_message,
+                        recipients=[email],
+                        subject="📤 Reminder - Please Punch Out",
+                        phone_numbers=None,
+                        platforms=["email"],
+                    )
 
-            # Send shorter SMS separately if needed
-            if phones and (config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS):
-                if config.ENABLE_SMS_ALERTS:
-                    send_sms_alert(sms_message, phones)
-                if config.ENABLE_WHATSAPP_ALERTS:
-                    send_whatsapp_alert(sms_message, phones)
+                if phone and (
+                    config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
+                ):
+                    if config.ENABLE_SMS_ALERTS:
+                        send_sms_alert(sms_message, [phone])
+                    if config.ENABLE_WHATSAPP_ALERTS:
+                        send_whatsapp_alert(sms_message, [phone])
 
             logger.info(
                 f"Sent out-punch reminders to {len(staff_pending_out)} staff member(s)"
@@ -589,7 +577,7 @@ Summary:
 
 Attendance Rate: {(present_count/total_staff*100) if total_staff > 0 else 0:.1f}%
 
-This is an automated daily summary from the Staff Attendance System."""
+This is an automated daily summary from the FaceSync."""
 
         # Shorter message for SMS/WhatsApp
         sms_message = f"📊 Daily Report {today.strftime('%Y-%m-%d')}: Present {present_count}/{total_staff}, Absent {absent_count}, Late {late_count}"
@@ -677,13 +665,18 @@ def send_custom_alert(
     """
     Send a custom alert to specific staff members.
 
+    The provided `message` may include a ``{name}`` placeholder which will be
+    replaced with the recipient's name. Alerts are sent individually so that
+    each staff member only sees their own name (and can even have a slightly
+    different body if desired).
+
     Args:
         staff_ids: List of staff IDs to alert
-        message: Custom message content
+        message: Custom message content (can contain ``{name}``)
         subject: Email subject
 
     Returns:
-        dict with alert results
+        dict with aggregated results for each staff member keyed by staff_id
     """
     conn = database.get_connection()
     c = conn.cursor()
@@ -701,12 +694,37 @@ def send_custom_alert(
 
         staff_list = c.fetchall()
 
-        emails = [row[2] for row in staff_list if row[2]]
-        phones = [row[3] for row in staff_list if row[3]]
+        overall_results = {}
+        for row in staff_list:
+            sid, name, email, phone = row
+            personalised = message.format(name=name)
 
-        return send_alert(
-            message=message, recipients=emails, subject=subject, phone_numbers=phones
-        )
+            # send via email if available
+            if email:
+                send_alert(
+                    message=personalised,
+                    recipients=[email],
+                    subject=subject,
+                    phone_numbers=None,
+                    platforms=["email"],
+                )
+
+            # send via phone if available
+            if phone and (config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS):
+                sms_msg = personalised
+                if config.ENABLE_SMS_ALERTS:
+                    send_sms_alert(sms_msg, [phone])
+                if config.ENABLE_WHATSAPP_ALERTS:
+                    send_whatsapp_alert(sms_msg, [phone])
+
+            overall_results[sid] = {
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "status": "sent",
+            }
+
+        return overall_results
 
     except Exception as e:
         logger.error(f"Error sending custom alert: {str(e)}")
@@ -722,7 +740,7 @@ def test_alert_configuration() -> dict:
     Returns:
         dict with test results for each platform
     """
-    test_message = "This is a test alert from the Staff Attendance System."
+    test_message = "This is a test alert from FaceSync."
     test_subject = "🔔 Test Alert"
 
     results = {
@@ -734,12 +752,19 @@ def test_alert_configuration() -> dict:
 
     # Test Email
     if config.EMAIL_USER and config.EMAIL_PASSWORD:
-        results["email"] = send_email_alert(test_subject, test_message, [config.EMAIL_USER])
+        results["email"] = send_email_alert(
+            test_subject, test_message, [config.EMAIL_USER]
+        )
     else:
         results["email"] = {"success": False, "message": "Email not configured"}
 
     # Test SMS (if configured)
-    if config.TWILIO_SID and config.TWILIO_TOKEN and config.TWILIO_PHONE_NUMBER and config.ADMIN_PHONE:
+    if (
+        config.TWILIO_SID
+        and config.TWILIO_TOKEN
+        and config.TWILIO_PHONE_NUMBER
+        and config.ADMIN_PHONE
+    ):
         results["sms"] = send_sms_alert(test_message, [config.ADMIN_PHONE])
     elif config.TWILIO_SID and config.TWILIO_TOKEN and config.TWILIO_PHONE_NUMBER:
         results["sms"] = {
@@ -750,7 +775,12 @@ def test_alert_configuration() -> dict:
         results["sms"] = {"success": False, "message": "SMS not configured"}
 
     # Test WhatsApp (if configured)
-    if config.TWILIO_SID and config.TWILIO_TOKEN and config.TWILIO_WHATSAPP_NUMBER and config.ADMIN_PHONE:
+    if (
+        config.TWILIO_SID
+        and config.TWILIO_TOKEN
+        and config.TWILIO_WHATSAPP_NUMBER
+        and config.ADMIN_PHONE
+    ):
         results["whatsapp"] = send_whatsapp_alert(test_message, [config.ADMIN_PHONE])
     elif config.TWILIO_SID and config.TWILIO_TOKEN and config.TWILIO_WHATSAPP_NUMBER:
         results["whatsapp"] = {

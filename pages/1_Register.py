@@ -16,7 +16,7 @@ with st.form("register_form"):
     with col2:
         email = st.text_input("Email")
         dept = st.selectbox(
-            "Department", ["IT", "HR", "Sales", "Operations", "Management"]
+            "Department", ["Computer Science","Data Science","Commerce","Home Science","English","Tamil","Maths","Physics","Chemistry"]
         )
         role = st.text_input("Role/Designation")
 

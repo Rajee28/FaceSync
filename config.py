@@ -41,7 +41,7 @@ EMAIL_SMTP_SERVER = os.getenv("EMAIL_SMTP_SERVER", "smtp.gmail.com")
 EMAIL_SMTP_PORT = int(os.getenv("EMAIL_SMTP_PORT", 587))
 EMAIL_USER = os.getenv("EMAIL_USER", "")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
-EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Staff Attendance System")
+EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "FaceSync")
 
 # Admin Configuration
 ADMIN_PHONE = os.getenv("ADMIN_PHONE", "")

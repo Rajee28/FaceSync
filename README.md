@@ -1,4 +1,4 @@
-# Staff Attendance Management System
+# FaceSync: Smart Staff Attendance Tracker
 
 A zero-cost, face recognition-based attendance system built with Python, Streamlit, and DeepFace.
 
@@ -98,7 +98,7 @@ ENABLE_WHATSAPP_ALERTS=false
    EMAIL_SMTP_PORT=587
    EMAIL_USER=your_email@gmail.com
    EMAIL_PASSWORD=your_app_password
-   EMAIL_FROM_NAME=Staff Attendance System
+   EMAIL_FROM_NAME=FaceSync
    ```
 
 ### Twilio Setup (SMS & WhatsApp)
