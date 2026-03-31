@@ -1,10 +1,18 @@
 import streamlit as st
 import services
 from datetime import datetime
+import ui
 
 st.set_page_config(page_title="Mark Attendance", page_icon="📝")
+ui.apply_global_styles(
+    "Mark Attendance",
+    "Fast facial check-in and check-out with real-time recognition status.",
+)
 
-st.header("Mark Attendance")
+ui.glass_info_card(
+    "How to Use",
+    "Look straight at the camera, keep your face centered, and wait for identification confirmation.",
+)
 
 # Camera Input
 picture = st.camera_input("Look at the camera to punch in/out")

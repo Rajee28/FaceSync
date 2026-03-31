@@ -2,10 +2,25 @@ import streamlit as st
 import face_utils
 import numpy as np
 import services
+import ui
 
 st.set_page_config(page_title="Register Staff", page_icon="👤")
+ui.apply_global_styles(
+    "Register New Staff",
+    "Create a clean staff profile with facial identity for reliable attendance automation.",
+)
 
-st.header("Register New Staff")
+tip1, tip2 = st.columns(2)
+with tip1:
+    ui.glass_info_card(
+        "Photo Quality Tip",
+        "Use clear front-facing lighting and keep only one person in the frame for best results.",
+    )
+with tip2:
+    ui.glass_info_card(
+        "Data Tip",
+        "Keep staff IDs short and consistent, for example S001, S002, and so on.",
+    )
 
 with st.form("register_form"):
     col1, col2 = st.columns(2)

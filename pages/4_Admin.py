@@ -2,24 +2,38 @@ import streamlit as st
 import services
 import alerts
 import config
+import ui
 
 st.set_page_config(page_title="Admin Panel", page_icon="⚙️")
+ui.apply_global_styles(
+    "Admin Control Center",
+    "Manage staff, correct attendance records, and send communication alerts from one secure page.",
+)
 
 # Simple Password Protection (Hardcoded for demo, use env vars in prod)
 if "admin_logged_in" not in st.session_state:
     st.session_state["admin_logged_in"] = False
 
 if not st.session_state["admin_logged_in"]:
-    pwd = st.text_input("Enter Admin Password", type="password")
-    if st.button("Login"):
-        if pwd == config.ADMIN_PASSWORD:
-            st.session_state["admin_logged_in"] = True
-            st.rerun()
-        else:
-            st.error("Invalid Password")
+    ui.glass_info_card(
+        "Secure Access",
+        "Enter admin credentials to access management tools and configuration controls.",
+    )
+    auth_col1, auth_col2, auth_col3 = st.columns([1, 1.4, 1])
+    with auth_col2:
+        pwd = st.text_input("Enter Admin Password", type="password")
+        if st.button("Login", use_container_width=True):
+            if pwd == config.ADMIN_PASSWORD:
+                st.session_state["admin_logged_in"] = True
+                st.rerun()
+            else:
+                st.error("Invalid Password")
     st.stop()
 
-st.header("Admin Panel")
+ui.glass_info_card(
+    "Administrator Tools",
+    "Edit staff records, perform attendance corrections, and validate alert integrations.",
+)
 
 st.subheader("Manage Staff")
 # load current staff data

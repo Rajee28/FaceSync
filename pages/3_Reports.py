@@ -1,10 +1,18 @@
 import streamlit as st
 import services
 from datetime import datetime
+import ui
 
 st.set_page_config(page_title="Attendance Reports", page_icon="📊")
+ui.apply_global_styles(
+    "Attendance Reports",
+    "Track daily presence and staff-wise history with a cleaner analytics view.",
+)
 
-st.header("Attendance Reports")
+ui.glass_info_card(
+    "Reporting View",
+    "Switch between daily logs and staff history tabs to audit attendance quickly.",
+)
 
 tab1, tab2 = st.tabs(["Daily Attendance", "Staff History"])
 
