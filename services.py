@@ -244,7 +244,7 @@ class AttendanceService:
         return counts
 
     @staticmethod
-    def update_attendance_record(staff_id, date, in_time, status):
+    def update_attendance_record(staff_id, date, in_time, out_time, status):
         """Update an attendance record."""
         conn = database.get_connection()
         c = conn.cursor()
@@ -256,15 +256,23 @@ class AttendanceService:
             )
             exists = c.fetchone()
 
+            _in = str(in_time) if in_time else None
+            _out = str(out_time) if out_time else None
+
             if exists:
                 c.execute(
-                    "UPDATE attendance SET in_time=?, status=? WHERE id=?",
-                    (str(in_time), status, exists[0]),
+                    "UPDATE attendance SET in_time=?, out_time=?, status=? WHERE id=?",
+                    (_in, _out, status, exists[0]),
                 )
                 conn.commit()
-                return True, "Updated successfully"
+                return True, "Updated existing record successfully"
             else:
-                return False, "Record does not exist."
+                c.execute(
+                    "INSERT INTO attendance (staff_id, punch_date, in_time, out_time, status) VALUES (?, ?, ?, ?, ?)",
+                    (staff_id, date, _in, _out, status),
+                )
+                conn.commit()
+                return True, "Created new attendance record successfully"
         except Exception as e:
             return False, f"Error: {e}"
         finally:

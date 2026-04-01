@@ -10,8 +10,33 @@ ui.apply_global_styles(
     "FaceSync: Smart Staff Attendance Tracker",
     "Modern attendance monitoring with face recognition, faster workflows, and cleaner insights.",
 )
+ui.theme_toggle()
 
-# Initialize DB on first load (safe to call multiple times)
+# Application-Wide Login Gateway
+if "app_logged_in" not in st.session_state:
+    st.session_state["app_logged_in"] = False
+
+if not st.session_state["app_logged_in"]:
+    ui.render_login_bg()
+    
+    with st.form("app_login_form"):
+        st.markdown("<h2 class='login-title'>FaceSync Portal</h2>", unsafe_allow_html=True)
+        st.markdown("<h4 class='login-subtitle'>Sign In to Continue</h4>", unsafe_allow_html=True)
+        
+        username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
+        password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
+        
+        submit_btn = st.form_submit_button("LOGIN", use_container_width=True)
+        
+        
+        if submit_btn:
+            if username.strip() == "staff" and password == "pass":
+                st.session_state["app_logged_in"] = True
+                st.rerun()
+            else:
+                st.error("Invalid credentials.")
+                
+    st.stop()
 if "db_initialized" not in st.session_state:
     try:
         database.init_db()
@@ -35,7 +60,7 @@ start_scheduler_service()
 
 st.sidebar.markdown(
     """
-    <h2 style="color:#f8d27a; margin-bottom: 0.25rem;">Navigation</h2>
+    <h2 style="color:var(--brand-primary); margin-bottom: 0.25rem;">Navigation</h2>
     """,
     unsafe_allow_html=True,
 )

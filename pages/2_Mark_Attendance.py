@@ -4,18 +4,22 @@ from datetime import datetime
 import ui
 
 st.set_page_config(page_title="Mark Attendance", page_icon="📝")
+ui.check_auth()
 ui.apply_global_styles(
     "Mark Attendance",
     "Fast facial check-in and check-out with real-time recognition status.",
 )
+ui.theme_toggle()
 
 ui.glass_info_card(
     "How to Use",
     "Look straight at the camera, keep your face centered, and wait for identification confirmation.",
 )
 
-# Camera Input
-picture = st.camera_input("Look at the camera to punch in/out")
+# Camera Input Layout
+_, col_cam, _ = st.columns([1, 2, 1])
+with col_cam:
+    picture = st.camera_input("Look at the camera to punch in/out")
 
 if picture:
     with st.spinner("Recognizing..."):

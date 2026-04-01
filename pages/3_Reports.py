@@ -4,10 +4,12 @@ from datetime import datetime
 import ui
 
 st.set_page_config(page_title="Attendance Reports", page_icon="📊")
+ui.check_auth()
 ui.apply_global_styles(
     "Attendance Reports",
     "Track daily presence and staff-wise history with a cleaner analytics view.",
 )
+ui.theme_toggle()
 
 ui.glass_info_card(
     "Reporting View",
@@ -23,7 +25,7 @@ with tab1:
     df = services.AttendanceService.get_daily_attendance(date_sel)
 
     if not df.empty:
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
         # Stats
         present_count = df[df["status"].str.contains("Present")].shape[0]
@@ -46,7 +48,8 @@ with tab2:
             # Fetch History
             hist_df = services.AttendanceService.get_staff_history(staff_id)
 
-            st.dataframe(hist_df)
+            st.markdown("### Recent Activity")
+            st.dataframe(hist_df, use_container_width=True, hide_index=True)
 
             # Fetch Counters
             month_str = datetime.now().strftime("%Y-%m")

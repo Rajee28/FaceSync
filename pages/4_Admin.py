@@ -5,10 +5,12 @@ import config
 import ui
 
 st.set_page_config(page_title="Admin Panel", page_icon="⚙️")
+ui.check_auth()
 ui.apply_global_styles(
     "Admin Control Center",
     "Manage staff, correct attendance records, and send communication alerts from one secure page.",
 )
+ui.theme_toggle()
 
 # Simple Password Protection (Hardcoded for demo, use env vars in prod)
 if "admin_logged_in" not in st.session_state:
@@ -51,6 +53,7 @@ if editor_func:
         staff_df,
         num_rows="dynamic",
         use_container_width=True,
+        hide_index=True,
         disabled=["face_encoding"],
         key="staff_editor",
     )
@@ -155,7 +158,8 @@ with st.expander("Update Attendance Record"):
     with st.form("manual_update"):
         u_staff_id = st.text_input("Staff ID")
         u_date = st.date_input("Date")
-        u_in_time = st.time_input("In Time")
+        u_in_time = st.text_input("In Time (HH:MM:SS)", placeholder="09:00:00")
+        u_out_time = st.text_input("Out Time (HH:MM:SS)", placeholder="17:00:00", help="Leave blank if not punched out")
         u_status = st.selectbox(
             "Status",
             [
@@ -168,11 +172,11 @@ with st.expander("Update Attendance Record"):
             ],
         )
 
-        submit_upd = st.form_submit_button("Update Record")
+        submit_upd = st.form_submit_button("Update Record", use_container_width=True)
 
         if submit_upd and u_staff_id:
             success, message = services.AttendanceService.update_attendance_record(
-                u_staff_id, u_date, u_in_time, u_status
+                u_staff_id, u_date, u_in_time, u_out_time, u_status
             )
             if success:
                 st.success(message)
@@ -195,7 +199,7 @@ with st.expander("Send Alert to Staff"):
             format_func=lambda x: f"{x} - {staff_list[staff_list['staff_id']==x]['name'].iloc[0]}",
         )
 
-        send_alert_btn = st.form_submit_button("Send Alert")
+        send_alert_btn = st.form_submit_button("Send Alert", use_container_width=True)
 
         if send_alert_btn:
             if not alert_message.strip():

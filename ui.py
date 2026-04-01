@@ -1,450 +1,342 @@
 import streamlit as st
 
+def theme_toggle():
+    """Render a theme switcher toggle in the sidebar."""
+    if "theme" not in st.session_state:
+        st.session_state["theme"] = "light"
+    
+    label = "🌙 Vibrant Night" if st.session_state.theme == "dark" else "☀️ Vibrant Day"
+    
+    # st.toggle returns True if toggled on. We'll say True = Light, False = Dark
+    is_light = st.session_state.theme == "light"
+    changed = st.sidebar.toggle(label, value=is_light, key="theme_toggle_widget")
+    
+    new_theme = "light" if changed else "dark"
+    
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
+        st.rerun()
+
 
 def apply_global_styles(page_title: str, subtitle: str = "") -> None:
-    """Apply a consistent visual theme and render a reusable hero header."""
+    """Apply the Vibrant Non-Monochrome Dual-theme."""
+    if "theme" not in st.session_state:
+        st.session_state["theme"] = "light"
+        
+    theme = st.session_state.theme
+
+    if theme == "dark":
+        # Ultra-Vibrant Dark: Deep Navy & Amber/Gold
+        primary = "#f59e0b"           # Amber
+        primary_hover = "#fbbf24"
+        secondary = "#3b82f6"         # Electric Blue
+        bg_main = "#0f172a"           # Deep Slate/Navy Background
+        bg_card = "#1e3a8a"           # Royal Blue Cards
+        bg_border = "#3b82f6"         # Blue border
+        text_main = "#eff6ff"         # Ice blue text
+        text_soft = "#93c5fd"         # Light blue text
+        card_shadow = "0 8px 30px rgba(15,23,42,0.6)"
+        glow = "0 0 15px rgba(245, 158, 11, 0.4)"
+        grid_bg = "#1e3a8a"
+        hero_start = "#3b82f6"
+        hero_end = "#f59e0b"
+        header_bg = "rgba(59, 130, 246, 0.2)"
+        grad_color1 = "rgba(59, 130, 246, 0.08)"
+        grad_color2 = "rgba(245, 158, 11, 0.06)"
+        table_filter = "none"
+    else:
+        # Ultra-Vibrant Light: Indigo Wash & Magenta
+        primary = "#ec4899"           # Vibrant Pink/Magenta
+        primary_hover = "#f472b6"
+        secondary = "#4338ca"         # Deep Indigo
+        bg_main = "#e0e7ff"           # Periwinkle/Indigo wash
+        bg_card = "#c7d2fe"           # Solid pastel Indigo
+        bg_border = "#a5b4fc"
+        text_main = "#1e1b4b"         # Extremely dark violet
+        text_soft = "#312e81"         # Dark violet
+        card_shadow = "0 4px 20px rgba(67, 56, 202, 0.15)"
+        glow = "0 0 15px rgba(236, 72, 153, 0.4)"
+        grid_bg = "#c7d2fe"
+        hero_start = "#4338ca"
+        hero_end = "#ec4899"
+        header_bg = "rgba(236, 72, 153, 0.1)"
+        grad_color1 = "rgba(67, 56, 202, 0.06)"
+        grad_color2 = "rgba(236, 72, 153, 0.06)"
+        # Streamlit draws data tables with canvas based on config.toml (which is dark). 
+        # By inverting the entire dataframe in light mode, the black canvas becomes white exactly matching the theme.
+        table_filter = "invert(0.9) hue-rotate(180deg) brightness(1.2) contrast(0.9)"
+
     st.markdown(
-        """
+        f"""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
-            :root {
-                --brand-deep: #083344;
-                --brand-mid: #0f766e;
-                --brand-accent: #14b8a6;
-                --brand-warm: #f59e0b;
-                --brand-soft: #d7f7f3;
-                --text-main: #102a43;
-                --text-soft: #486581;
-                --text-muted: #6b7f95;
-                --surface: rgba(255, 255, 255, 0.9);
-                --surface-strong: #ffffff;
-                --surface-soft: rgba(255, 255, 255, 0.72);
-                --shadow: 0 12px 30px rgba(8, 51, 68, 0.14);
-                --border: rgba(15, 118, 110, 0.2);
-                --border-strong: rgba(15, 118, 110, 0.33);
-                --focus-ring: 0 0 0 3px rgba(20, 184, 166, 0.24);
-            }
+            :root {{
+                --brand-primary: {primary};
+                --brand-primary-hover: {primary_hover};
+                --brand-secondary: {secondary};
+                --bg-main: {bg_main};
+                --bg-card: {bg_card};
+                --bg-border: {bg_border};
+                --text-main: {text_main};
+                --text-soft: {text_soft};
+                --shadow: {card_shadow};
+                --shadow-glow: {glow};
+                --border: 1px solid var(--bg-border);
+                --grid-bg: {grid_bg};
+                --header-bg: {header_bg};
+                --hero-start: {hero_start};
+                --hero-end: {hero_end};
+                --table-filter: {table_filter};
+            }}
 
-            html, body, .stApp {
-                font-family: 'Outfit', sans-serif;
+            html, body, .stApp {{
+                font-family: 'Outfit', sans-serif !important;
                 color: var(--text-main);
-                line-height: 1.45;
-            }
+                line-height: 1.5;
+            }}
 
-            [data-testid="stAppViewContainer"] {
-                background:
-                    radial-gradient(circle at 14% 18%, rgba(20, 184, 166, 0.22), transparent 32%),
-                    radial-gradient(circle at 85% 8%, rgba(245, 158, 11, 0.17), transparent 24%),
-                    linear-gradient(135deg, #f5fffd 0%, #ebf8f7 52%, #fff7ea 100%);
-            }
+            [data-testid="stAppViewContainer"] {{
+                background: radial-gradient(circle at 15% 50%, {grad_color1}, transparent 25%),
+                            radial-gradient(circle at 85% 30%, {grad_color2}, transparent 25%),
+                            var(--bg-main) !important;
+            }}
 
-            [data-testid="stHeader"] {
+            /* Override Streamlit Defaults with Important */
+            [data-testid="stHeader"] {{
                 background: transparent !important;
-                border-bottom: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-            }
+            }}
 
-            [data-testid="stDecoration"] {
-                background: linear-gradient(90deg, rgba(8, 51, 68, 0.52), rgba(15, 118, 110, 0.45)) !important;
-            }
+            [data-testid="stDecoration"] {{
+                background: linear-gradient(90deg, var(--hero-start), var(--hero-end)) !important;
+                height: 4px !important;
+            }}
 
-            [data-testid="stHeader"] * {
-                color: #f4fbff !important;
-            }
+            [data-testid="stSidebar"] {{
+                background: var(--bg-card) !important;
+                border-right: var(--border) !important;
+            }}
 
-            header[data-testid="stHeader"] {
-                background: transparent !important;
-            }
-
-            [data-testid="stToolbar"] {
-                right: 0.85rem;
-            }
-
-            [data-testid="stSidebar"] {
-                background: linear-gradient(180deg, #083344 0%, #0a4b5b 100%);
-                border-right: 1px solid rgba(255, 255, 255, 0.08);
-            }
-
-            [data-testid="stSidebar"] * {
-                color: #effcf9 !important;
-            }
-
-            [data-testid="stSidebar"] h1,
-            [data-testid="stSidebar"] h2,
-            [data-testid="stSidebar"] h3,
-            [data-testid="stSidebar"] h4,
-            [data-testid="stSidebar"] h5,
-            [data-testid="stSidebar"] h6,
-            [data-testid="stSidebar"] p,
-            [data-testid="stSidebar"] label,
-            [data-testid="stSidebar"] span {
-                color: #effcf9 !important;
-            }
-
-            .main > div {
-                padding-top: 1.3rem;
-            }
-
-            .block-container {
-                max-width: 1120px;
-                padding-top: 1.15rem;
-                padding-bottom: 2.2rem;
-            }
-
-            .hero-card {
-                background: linear-gradient(120deg, rgba(8, 51, 68, 0.95), rgba(15, 118, 110, 0.92));
-                border: 1px solid rgba(255, 255, 255, 0.18);
-                border-radius: 20px;
-                box-shadow: var(--shadow);
-                padding: 1.4rem 1.5rem 1.2rem;
-                color: #ffffff;
-                margin-bottom: 1.1rem;
-                animation: fadeSlide .45s ease-out;
-            }
-
-            .hero-title {
-                font-weight: 800;
-                letter-spacing: 0.3px;
-                font-size: clamp(1.35rem, 2.5vw, 2rem);
-                line-height: 1.2;
-                margin-bottom: 0.28rem;
-            }
-
-            .hero-subtitle {
-                color: rgba(236, 253, 245, 0.96) !important;
-                font-size: 1rem;
-                line-height: 1.35;
-                margin: 0;
-            }
-
-            .glass-card {
-                background: var(--surface);
-                border: 1px solid rgba(8, 51, 68, 0.12);
-                border-radius: 16px;
-                box-shadow: var(--shadow);
-                padding: 1rem 1rem 0.85rem;
-                margin: 0.62rem 0;
-                animation: fadeSlide .42s ease-out;
-            }
-
-            .glass-card h3 {
-                color: var(--text-main);
-                margin: 0 0 0.35rem 0;
-                font-size: 1.08rem;
-                font-weight: 700;
-            }
-
-            .glass-card p {
-                margin: 0;
-                color: var(--text-soft);
-                font-size: 0.95rem;
-                line-height: 1.45;
-            }
-
-            div[data-testid="stMetric"] {
-                background: var(--surface-strong);
-                border: 1px solid var(--border);
-                border-radius: 14px;
-                padding: 0.8rem 1rem;
-                box-shadow: 0 8px 20px rgba(8, 51, 68, 0.08);
-            }
-
-            div[data-testid="stMetric"] label,
-            div[data-testid="stMetric"] p,
-            div[data-testid="stMetric"] span {
+            [data-testid="stSidebar"] * {{
                 color: var(--text-main) !important;
-            }
+            }}
 
-            div[data-testid="stMetricLabel"] {
-                color: var(--text-soft) !important;
-                font-weight: 650 !important;
-            }
-
-            div[data-testid="stMetricValue"] {
-                color: var(--text-main) !important;
-                font-weight: 800 !important;
-                line-height: 1.1 !important;
-            }
-
-            div[data-testid="stMetricDelta"] {
-                color: var(--text-muted) !important;
-            }
-
-            .stTextInput > div > div > input,
-            .stTextArea textarea,
-            .stDateInput input,
-            .stTimeInput input,
-            .stNumberInput input,
-            .stSelectbox [data-baseweb="select"] > div,
-            [data-testid="stMultiSelect"] [data-baseweb="select"] > div {
-                background: rgba(255, 255, 255, 0.97) !important;
-                border: 1.4px solid var(--border-strong) !important;
-                border-radius: 11px !important;
-                color: var(--text-main) !important;
-                min-height: 2.7rem;
-                box-shadow: none !important;
-            }
-
-            .stTextInput > div > div > input:focus,
-            .stTextArea textarea:focus,
-            .stDateInput input:focus,
-            .stTimeInput input:focus,
-            .stNumberInput input:focus {
-                border-color: var(--brand-accent) !important;
-                box-shadow: var(--focus-ring) !important;
-                outline: none !important;
-            }
-
-            .stTextInput > label,
-            .stTextArea > label,
-            .stDateInput > label,
-            .stTimeInput > label,
-            .stNumberInput > label,
-            .stSelectbox > label,
-            .stMultiSelect > label,
-            .stFileUploader > label,
-            .stCameraInput > label {
-                color: var(--text-soft) !important;
-                font-weight: 600 !important;
-                font-size: 0.9rem !important;
-                margin-bottom: 0.28rem !important;
-            }
-
-            .stSelectbox [data-baseweb="select"] > div:hover,
-            [data-testid="stMultiSelect"] [data-baseweb="select"] > div:hover {
-                border-color: var(--brand-accent) !important;
-            }
-
-            [data-baseweb="menu"] {
-                background: #ffffff !important;
-                border: 1px solid var(--border) !important;
-                border-radius: 10px !important;
-            }
-
-            [data-baseweb="menu"] [role="option"] {
-                color: var(--text-main) !important;
-                background: #ffffff !important;
-            }
-
-            [data-baseweb="menu"] [role="option"][aria-selected="true"],
-            [data-baseweb="menu"] [role="option"]:hover {
-                background: rgba(20, 184, 166, 0.14) !important;
-            }
-
-            [data-testid="stFileUploadDropzone"] {
-                background: rgba(255, 255, 255, 0.86) !important;
-                border: 1.8px dashed var(--border-strong) !important;
-                border-radius: 14px !important;
-                color: var(--text-main) !important;
-            }
-
-            [data-testid="stFileUploadDropzone"]:hover {
-                border-color: var(--brand-accent) !important;
-                background: rgba(215, 247, 243, 0.42) !important;
-            }
-
-            [data-testid="stCameraInput"] {
-                background: var(--surface-soft);
-                border: 1px solid var(--border);
-                border-radius: 14px;
-                padding: 0.45rem;
-            }
-
-            .stButton > button {
-                border: none;
-                color: #ffffff;
-                font-weight: 650;
-                border-radius: 12px;
-                padding: 0.52rem 1.05rem;
-                background: linear-gradient(90deg, var(--brand-mid), var(--brand-accent));
-                box-shadow: 0 8px 18px rgba(15, 118, 110, 0.28);
-                transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
-                font-family: 'Outfit', sans-serif;
-            }
-
-            .stButton > button:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 12px 24px rgba(15, 118, 110, 0.34);
-                filter: saturate(1.06);
-            }
-
-            .stButton > button:active {
-                transform: translateY(0);
-            }
-
-            [data-testid="stDataFrame"],
-            [data-testid="stDataEditor"] {
-                border: 1px solid var(--border) !important;
-                border-radius: 12px !important;
-                overflow: hidden !important;
-                box-shadow: 0 8px 20px rgba(8, 51, 68, 0.06);
-            }
-
-            [data-testid="stDataFrame"] [role="grid"],
-            [data-testid="stDataEditor"] [role="grid"] {
-                background: rgba(255, 255, 255, 0.98) !important;
-                color: var(--text-main) !important;
-            }
-
-            [data-testid="stDataFrame"] [role="columnheader"],
-            [data-testid="stDataEditor"] [role="columnheader"] {
-                background: linear-gradient(90deg, rgba(15, 118, 110, 0.16), rgba(20, 184, 166, 0.1)) !important;
-                color: var(--text-main) !important;
-                font-weight: 700 !important;
-                border-bottom: 1px solid var(--border) !important;
-            }
-
-            [data-testid="stDataFrame"] [role="gridcell"],
-            [data-testid="stDataEditor"] [role="gridcell"] {
-                color: var(--text-main) !important;
-                background: rgba(255, 255, 255, 0.98) !important;
-                border-color: rgba(15, 118, 110, 0.09) !important;
-            }
-
-            .stTabs [data-baseweb="tab-list"] {
-                gap: 0.35rem;
-                border-bottom: 1px solid var(--border) !important;
-            }
-
-            .stTabs [data-baseweb="tab"] {
-                background: rgba(8, 51, 68, 0.06) !important;
-                border-radius: 10px 10px 0 0 !important;
-                color: var(--text-main) !important;
-                font-weight: 620 !important;
-                border: none !important;
-                transition: all 0.25s ease;
-            }
-
-            .stTabs [data-baseweb="tab"]:hover {
-                background: rgba(8, 51, 68, 0.12) !important;
-            }
-
-            .stTabs [aria-selected="true"] {
-                background: linear-gradient(90deg, rgba(20, 184, 166, 0.25), rgba(20, 184, 166, 0.15)) !important;
-                border-bottom: 3px solid var(--brand-accent) !important;
-                color: var(--text-main) !important;
-            }
-
-            [data-testid="stForm"] {
-                border: 1px solid var(--border) !important;
-                border-radius: 16px !important;
-                padding: 1.2rem !important;
-                background: rgba(255, 255, 255, 0.55) !important;
-                box-shadow: 0 8px 18px rgba(8, 51, 68, 0.06) !important;
-            }
-
-            h1, h2, h3, h4, h5, h6 {
+            /* Fonts */
+            h1, h2, h3, h4, h5, h6 {{
                 color: var(--text-main) !important;
                 font-family: 'Outfit', sans-serif !important;
-                line-height: 1.28 !important;
-                letter-spacing: 0.1px;
-                margin-top: 0.45rem !important;
-                margin-bottom: 0.45rem !important;
-            }
+                letter-spacing: -0.01em !important;
+            }}
+            p, span, label, div {{
+                color: var(--text-main);
+            }}
 
-            [data-testid="stMarkdownContainer"] h1,
-            [data-testid="stMarkdownContainer"] h2,
-            [data-testid="stMarkdownContainer"] h3,
-            [data-testid="stMarkdownContainer"] h4,
-            [data-testid="stMarkdownContainer"] h5,
-            [data-testid="stMarkdownContainer"] h6 {
-                color: var(--text-main) !important;
-            }
-
-            p {
-                color: var(--text-soft) !important;
-                line-height: 1.5 !important;
-            }
-
-            [data-testid="stWidgetLabel"] p,
-            [data-testid="stWidgetLabel"] span,
-            [data-testid="stMarkdownContainer"] label,
-            .stTextInput label,
-            .stTextArea label,
-            .stSelectbox label,
-            .stMultiSelect label,
-            .stDateInput label,
-            .stTimeInput label {
-                color: var(--text-soft) !important;
-                font-weight: 600 !important;
-                line-height: 1.28 !important;
-            }
-
-            [data-testid="stExpander"] {
-                border: 1px solid var(--border) !important;
-                border-radius: 12px !important;
-                background: rgba(255, 255, 255, 0.6) !important;
+            /* Custom Components */
+            .hero-card {{
+                background: linear-gradient(135deg, var(--hero-start), var(--hero-end));
+                border-radius: 16px;
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+                padding: 2.5rem 2rem;
+                margin-bottom: 2rem;
+                color: #FFFFFF !important;
+                position: relative;
                 overflow: hidden;
-            }
+            }}
+            
+            /* Animated scan line effect */
+            .hero-card::after {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 50%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                animation: scan 3s infinite linear;
+            }}
+            @keyframes scan {{
+                0% {{ left: -100%; }}
+                100% {{ left: 200%; }}
+            }}
 
-            [data-testid="stExpander"] button {
+            .hero-title {{
+                font-weight: 800;
+                font-size: clamp(1.8rem, 3vw, 2.5rem);
+                margin-bottom: 0.5rem;
+                color: #FFFFFF !important;
+            }}
+
+            .hero-subtitle {{
+                color: rgba(255, 255, 255, 0.9) !important;
+                font-size: 1.1rem;
+                margin: 0;
+            }}
+
+            /* Custom Cards */
+            .glass-card {{
+                background: var(--bg-card);
+                border: var(--border);
+                border-radius: 16px;
+                box-shadow: var(--shadow);
+                padding: 1.5rem;
+                margin: 0.5rem 0;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+                height: 100%;
+            }}
+            .glass-card:hover {{
+                transform: translateY(-3px);
+                box-shadow: var(--shadow-glow);
+                border-color: var(--brand-primary);
+            }}
+            .glass-card h3 {{
                 color: var(--text-main) !important;
+                margin: 0 0 0.5rem 0;
+                font-size: 1.2rem;
+                font-weight: 700;
+            }}
+            .glass-card p {{
+                margin: 0;
+                color: var(--text-soft) !important;
+                font-size: 0.95rem;
+            }}
+
+            /* Metrics */
+            div[data-testid="stMetric"] {{
+                background: var(--bg-card);
+                border: var(--border);
+                border-radius: 16px;
+                padding: 1.5rem;
+                box-shadow: var(--shadow);
+            }}
+            div[data-testid="stMetricLabel"] {{
+                color: var(--text-soft) !important;
+            }}
+            div[data-testid="stMetricValue"] {{
+                color: var(--brand-primary) !important;
+            }}
+
+            /* EXTREME OVERRIDE: Inputs (Text, Date, Time, Select) */
+            /* This fixes the black Time Input and input shadows */
+            .stTextInput input, .stTextArea textarea, .stDateInput input, 
+            .stTimeInput input, .stNumberInput input, 
+            [data-baseweb="input"], [data-baseweb="base-input"],
+            [data-baseweb="select"] > div, [data-testid="stTimeInput"] > div > div {{
+                background-color: var(--grid-bg) !important;
+                background: var(--grid-bg) !important;
+                border: var(--border) !important;
+                border-radius: 10px !important;
+                color: var(--text-main) !important;
+                box-shadow: none !important; 
+                -webkit-box-shadow: none !important;
+            }}
+            input:focus, textarea:focus, [data-baseweb="select"] > div:focus {{
+                border-color: var(--brand-primary) !important;
+                box-shadow: 0 0 0 2px var(--brand-primary) !important;
+            }}
+
+            /* Dropdown Menus (Popovers) */
+            div[data-baseweb="popover"] > div, div[data-baseweb="popover"] ul, [data-baseweb="menu"], ul[role="listbox"] {{
+                background-color: var(--grid-bg) !important;
+                border: var(--border) !important;
+                border-radius: 8px !important;
+            }}
+            [data-baseweb="select"] span {{ color: var(--text-main) !important; }}
+            li[role="option"] {{
+                background-color: transparent !important;
+                color: var(--text-main) !important;
+            }}
+            li[role="option"]:hover, li[role="option"][aria-selected="true"] {{
+                background-color: var(--brand-primary) !important;
+                color: #FFFFFF !important;
+            }}
+
+            /* EXTREME OVERRIDE: Expanders */
+            /* This fixes the black expander headers */
+            [data-testid="stExpander"], 
+            [data-testid="stExpander"] > details, 
+            [data-testid="stExpander"] summary,
+            [data-testid="stExpander"] div[data-testid="stExpanderDetails"] {{
+                background-color: var(--grid-bg) !important;
+                background: var(--grid-bg) !important;
+                border-color: var(--bg-border) !important;
+            }}
+            [data-testid="stExpander"] summary {{
+                color: var(--brand-primary) !important;
                 font-weight: 600 !important;
-            }
+                padding: 1rem !important;
+            }}
+            div[data-testid="stExpander"] * {{
+                color: var(--text-main);
+            }}
 
-            [data-testid="stAlert"] {
-                border-radius: 12px !important;
-                border-width: 1px !important;
-            }
+            /* Tabs */
+            button[data-baseweb="tab"] {{ background-color: transparent !important; color: var(--text-soft) !important; }}
+            button[data-baseweb="tab"][aria-selected="true"] {{ color: var(--brand-primary) !important; }}
+            div[data-baseweb="tab-highlight"] {{ background-color: var(--brand-primary) !important; }}
 
-            [data-testid="stNotificationContentSuccess"] {
-                background: rgba(16, 185, 129, 0.08) !important;
-            }
+            /* EXTREME OVERRIDE: ALL Buttons (Primary, Secondary, Form Submit, Download) */
+            /* This fixes the pale secondary buttons */
+            .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button,
+            button[kind="primary"], button[kind="secondary"], 
+            button[data-testid="baseButton-secondary"], button[data-testid="baseButton-primary"] {{
+                background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary)) !important;
+                color: #FFFFFF !important;
+                font-weight: 600 !important;
+                border: none !important;
+                border-radius: 10px !important;
+                padding: 0.6rem 1.5rem !important;
+                box-shadow: var(--shadow-glow) !important;
+                transition: transform 0.2s ease !important;
+            }}
+            button:hover {{ transform: translateY(-2px) !important; filter: brightness(1.2) !important; }}
 
-            [data-testid="stSpinner"] {
-                color: var(--brand-accent) !important;
-            }
+            /* Camera Input inner buttons ONLY */
+            [data-testid="stCameraInput"] button {{
+                background: var(--bg-card) !important;
+                color: var(--text-main) !important;
+                border: var(--border) !important;
+                box-shadow: none !important;
+            }}
+            
+            /* Checkboxes, Radios, Sliders, MultiSelect */
+            [data-testid="stCheckbox"] span, [data-testid="stRadio"] span {{ color: var(--text-main) !important; }}
+            div[data-baseweb="checkbox"] > div:first-child, div[data-baseweb="radio"] > div:first-child {{ border-color: var(--brand-primary) !important; }}
+            div[data-baseweb="checkbox"] > div:first-child[data-checked="true"], 
+            div[data-baseweb="radio"] > div:first-child[data-checked="true"] {{ background-color: var(--brand-primary) !important; }}
+            [data-baseweb="slider"] div[role="slider"] {{ background-color: var(--brand-primary) !important; }}
+            [data-baseweb="tag"] {{ background-color: var(--brand-primary) !important; color: #FFFFFF !important; }}
+            [data-baseweb="tag"] span {{ color: #FFFFFF !important; }}
 
-            [data-testid="column"] {
-                gap: 0.75rem;
-            }
+            /* Table HTML overrides */
+            div[data-testid="stTable"], th, td {{
+                background: var(--grid-bg) !important;
+                background-color: var(--grid-bg) !important;
+                color: var(--text-main) !important;
+            }}
+            
+            [data-testid="stDataFrame"], [data-testid="stDataEditor"], div[data-testid="stDataEditor"] {{
+                 filter: var(--table-filter) !important;
+                 transition: filter 0.3s ease;
+            }}
+            
+            /* File Dropzone */
+            [data-testid="stFileUploadDropzone"] {{
+                background: var(--grid-bg) !important;
+                border: 2px dashed var(--brand-primary) !important;
+            }}
+            
+            code {{ background-color: var(--grid-bg) !important; color: var(--brand-secondary) !important; border: var(--border) !important; }}
+            div[data-testid="stToast"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--brand-primary) !important; color: var(--text-main) !important; box-shadow: var(--shadow-glow) !important; }}
 
-            [data-testid="stMarkdownContainer"] p {
-                margin-top: 0.32rem;
-                margin-bottom: 0.48rem;
-            }
-
-            [data-testid="stVerticalBlock"] {
-                gap: 0.48rem;
-            }
-
-            @keyframes fadeSlide {
-                from { opacity: 0; transform: translateY(8px); }
-                to { opacity: 1; transform: translateY(0px); }
-            }
-
-            @media (max-width: 768px) {
-                .block-container {
-                    padding-top: 0.65rem;
-                    padding-left: 0.9rem;
-                    padding-right: 0.9rem;
-                }
-
-                .hero-card {
-                    padding: 1.05rem 1rem;
-                    border-radius: 16px;
-                }
-
-                .hero-title {
-                    font-size: 1.42rem;
-                }
-
-                .glass-card {
-                    border-radius: 14px;
-                    padding: 0.9rem;
-                }
-            }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
     hero_html = f"""
-        <section class=\"hero-card\">
-            <div class=\"hero-title\">{page_title}</div>
-            {f'<p class=\"hero-subtitle\">{subtitle}</p>' if subtitle else ''}
+        <section class="hero-card">
+            <div class="hero-title">{page_title}</div>
+            {f'<p class="hero-subtitle">{subtitle}</p>' if subtitle else ''}
         </section>
     """
     st.markdown(hero_html, unsafe_allow_html=True)
@@ -453,10 +345,184 @@ def apply_global_styles(page_title: str, subtitle: str = "") -> None:
 def glass_info_card(title: str, description: str) -> None:
     st.markdown(
         f"""
-        <div class=\"glass-card\">
+        <div class="glass-card">
             <h3>{title}</h3>
             <p>{description}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+def check_auth():
+    """Security wrapper to redirect if not app_logged_in."""
+    if not st.session_state.get("app_logged_in", False):
+        if hasattr(st, "switch_page"):
+            st.switch_page("app.py")
+        else:
+            st.error("Authentication required. Please return to the main Login Page.")
+            st.stop()
+
+def render_login_bg():
+    """Render the fullscreen login UI background and hide sidebar."""
+    import os
+    import base64
+    bg_file = "login.png"
+    bg_css = ""
+    if os.path.exists(bg_file):
+        with open(bg_file, "rb") as f:
+            encoded_string = base64.b64encode(f.read()).decode()
+        bg_css = f"""
+        [data-testid="stAppViewContainer"] {{
+            background-image: url("data:image/png;base64,{encoded_string}") !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        }}
+        """
+        
+    st.markdown(f"""
+        <style>
+        {bg_css}
+        /* Hide sidebar unconditionally on login screen */
+        [data-testid="stSidebar"] {{
+            display: none !important;
+        }}
+        /* Hide header */
+        [data-testid="stHeader"] {{
+            display: none !important;
+        }}
+        /* Hide the hero card injected by apply_global_styles */
+        .hero-card {{
+            display: none !important;
+        }}
+        
+        /* Centered Elegant Layout */
+        .stApp {{
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background-color: transparent !important;
+        }}
+        
+        /* Make sure the main layout container centers children */
+        [data-testid="stMain"] {{
+            background-color: transparent !important;
+        }}
+
+        .block-container {{
+            width: 100% !important;
+            max-width: 450px !important;
+            min-width: 320px !important;
+            margin: auto !important;
+            padding: 2rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative;
+            z-index: 999;
+        }}
+        
+        /* Glassmorphism Elegant Form Styling */
+        [data-testid="stForm"] {{
+            background: rgba(15, 23, 42, 0.75) !important; /* Elegant dark navy glass */
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border-radius: 24px !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            padding: 40px !important;
+            width: 100% !important;
+            max-width: 450px !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+            margin: 0 auto !important;
+        }}
+        
+        /* Typography */
+        .login-title {{
+            text-align: center;
+            color: #ffffff !important;
+            font-weight: 800;
+            font-size: 28px;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }}
+        .login-subtitle {{
+            text-align: center;
+            color: #94a3b8 !important; /* slate-400 */
+            font-weight: 500;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }}
+        .login-footer {{
+            text-align: center;
+            color: #94a3b8 !important;
+            font-size: 14px;
+            margin-top: 20px;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }}
+        .login-footer a {{
+            color: #3b82f6 !important; /* blue-500 */
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }}
+        .login-footer a:hover {{
+            color: #60a5fa !important; /* blue-400 */
+        }}
+        
+        /* EXTREME OVERRIDE: Solid translucent input fields */
+        [data-testid="stForm"] .stTextInput {{
+            margin-bottom: 15px !important;
+        }}
+        [data-testid="stForm"] .stTextInput input, 
+        [data-testid="stForm"] [data-baseweb="input"], 
+        [data-testid="stForm"] [data-baseweb="base-input"] {{
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 12px !important;
+            box-shadow: none !important;
+            color: #ffffff !important;
+            font-size: 15px !important;
+            transition: all 0.2s ease !important;
+            height: 48px !important;
+        }}
+        [data-testid="stForm"] input::placeholder {{
+            color: rgba(255,255,255,0.4) !important;
+            opacity: 1;
+        }}
+        [data-testid="stForm"] input:focus,
+        [data-testid="stForm"] [data-baseweb="input"]:focus-within {{
+            border-color: #3b82f6 !important; /* blue-500 */
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        }}
+        
+        /* Submit Button Styling */
+        [data-testid="stForm"] .stButton > button, 
+        [data-testid="stForm"] .stFormSubmitButton > button {{
+            background: #3b82f6 !important; /* solid pleasant blue */
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+            font-weight: 700 !important;
+            font-size: 16px !important;
+            letter-spacing: 0.5px !important;
+            width: 100% !important;
+            margin-top: 15px !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+            height: 48px !important;
+        }}
+        [data-testid="stForm"] .stButton > button:hover,
+        [data-testid="stForm"] .stFormSubmitButton > button:hover {{
+            background: #2563eb !important; /* darker blue */
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4) !important;
+            transform: translateY(-2px) !important;
+            filter: none !important;
+        }}
+        
+        </style>
+    """, unsafe_allow_html=True)

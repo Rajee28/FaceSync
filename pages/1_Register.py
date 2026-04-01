@@ -5,10 +5,12 @@ import services
 import ui
 
 st.set_page_config(page_title="Register Staff", page_icon="👤")
+ui.check_auth()
 ui.apply_global_styles(
     "Register New Staff",
     "Create a clean staff profile with facial identity for reliable attendance automation.",
 )
+ui.theme_toggle()
 
 tip1, tip2 = st.columns(2)
 with tip1:
@@ -49,11 +51,15 @@ with st.form("register_form"):
         role = st.text_input("Role/Designation")
 
     # Face Capture
-    st.subheader("Face Registration")
-    picture = st.camera_input("Take a picture")
-    uploaded_file = st.file_uploader("Or upload an image", type=["jpg", "png", "jpeg"])
-
-    submitted = st.form_submit_button("Register Staff")
+    st.markdown("<h3 style='text-align: center;'>Facial Registration</h3>", unsafe_allow_html=True)
+    
+    _, col_cam, _ = st.columns([1, 2, 1])
+    with col_cam:
+        picture = st.camera_input("Capture Face using Webcam")
+        uploaded_file = st.file_uploader("Or provide a high-quality photo", type=["jpg", "png", "jpeg"])
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("Register New Staff", use_container_width=True)
 
 if submitted:
     if not (staff_id and name):
