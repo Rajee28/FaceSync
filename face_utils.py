@@ -1,4 +1,3 @@
-from deepface import DeepFace
 import numpy as np
 from PIL import Image
 import config
@@ -23,6 +22,10 @@ def get_face_encodings(image):
     However, DeepFace.represent returns a list of result objects.
     """
     try:
+        # Import lazily so module import does not fail for the full app when
+        # OpenCV native libs are unavailable in some deployment runtimes.
+        from deepface import DeepFace
+
         # enforce_detection=True throws error if no face.
         # We handle exception.
         embedding_objs = DeepFace.represent(
@@ -34,6 +37,9 @@ def get_face_encodings(image):
         # embedding_objs is a list of dicts: {'embedding': [...], 'facial_area': ...}
         encodings = [np.array(obj["embedding"]) for obj in embedding_objs]
         return encodings
+    except ImportError as e:
+        print(f"DeepFace/OpenCV dependency import error: {e}")
+        return []
     except Exception as e:
         # No face found or other error
         print(f"DeepFace detect error: {e}")
