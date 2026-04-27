@@ -1,6 +1,6 @@
 import streamlit as st
 import services
-from datetime import datetime
+import config
 import ui
 
 st.set_page_config(page_title="Mark Attendance", page_icon="📝")
@@ -33,7 +33,7 @@ if picture:
             st.success(f"Identified: **{name}** ({staff_id})")
 
             # Process Attendance
-            now = datetime.now()
+            now = config.now_in_app_tz()
             current_date = now.date()
             current_time = now.time()
 

@@ -1,6 +1,6 @@
 import streamlit as st
 import services
-from datetime import datetime
+import config
 import ui
 
 st.set_page_config(page_title="Attendance Reports", page_icon="📊")
@@ -20,7 +20,7 @@ tab1, tab2 = st.tabs(["Daily Attendance", "Staff History"])
 
 with tab1:
     st.subheader("Daily Attendance Log")
-    date_sel = st.date_input("Select Date", datetime.now())
+    date_sel = st.date_input("Select Date", config.now_in_app_tz().date())
 
     df = services.AttendanceService.get_daily_attendance(date_sel)
 
@@ -52,7 +52,7 @@ with tab2:
             st.dataframe(hist_df, width="stretch", hide_index=True)
 
             # Fetch Counters
-            month_str = datetime.now().strftime("%Y-%m")
+            month_str = config.now_in_app_tz().strftime("%Y-%m")
             counts = services.AttendanceService.get_staff_counters(staff_id, month_str)
 
             if counts:

@@ -95,6 +95,7 @@ Key variables (see `.env.example` for full list):
 - Twilio: `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE_NUMBER`, `TWILIO_WHATSAPP_NUMBER`
 - Alert platform toggles: `ENABLE_EMAIL_ALERTS`, `ENABLE_SMS_ALERTS`, `ENABLE_WHATSAPP_ALERTS`
 - Alert calendar file: `ALERT_CALENDAR_CSV`
+- App timezone: `APP_TIMEZONE` (default `Asia/Kolkata`)
 
 ## Attendance Windows (Current Rules)
 
@@ -129,6 +130,8 @@ Configured jobs:
 - 18:00 -> end-of-day summary
 
 Jobs run only when the date has `STATUS=1` in the calendar CSV referenced by `ALERT_CALENDAR_CSV`.
+
+All scheduler jobs and app timestamps run in `APP_TIMEZONE` (default: IST via `Asia/Kolkata`).
 
 ## Alerts
 

@@ -1,4 +1,6 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import config
 
 def theme_toggle():
     """Render a theme switcher toggle in the sidebar."""
@@ -200,6 +202,59 @@ def apply_global_styles(page_title: str, subtitle: str = "") -> None:
                 font-size: 0.95rem;
             }}
 
+            .facesync-time-card {{
+                background: linear-gradient(125deg, color-mix(in srgb, var(--bg-card) 78%, var(--brand-secondary) 22%), color-mix(in srgb, var(--bg-card) 72%, var(--brand-primary) 28%));
+                border: var(--border);
+                border-radius: 16px;
+                box-shadow: var(--shadow);
+                padding: 1rem 1.25rem;
+                margin: 0.5rem 0 1rem 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+            }}
+            .facesync-time-meta {{
+                display: grid;
+                gap: 0.2rem;
+            }}
+            .facesync-time-label {{
+                font-size: 0.8rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--text-soft);
+            }}
+            .facesync-time-zone {{
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: var(--brand-primary);
+            }}
+            .facesync-time-value {{
+                font-size: clamp(1.4rem, 3.6vw, 2.1rem);
+                font-weight: 800;
+                letter-spacing: 0.04em;
+                color: var(--text-main);
+                font-variant-numeric: tabular-nums;
+                text-align: right;
+            }}
+            .facesync-time-date {{
+                font-size: 0.95rem;
+                color: var(--text-soft);
+                text-align: right;
+                font-weight: 500;
+            }}
+
+            @media (max-width: 640px) {{
+                .facesync-time-card {{
+                    flex-direction: column;
+                    align-items: flex-start;
+                }}
+                .facesync-time-value, .facesync-time-date {{
+                    text-align: left;
+                }}
+            }}
+
             /* Metrics */
             div[data-testid="stMetric"] {{
                 background: var(--bg-card);
@@ -351,6 +406,55 @@ def glass_info_card(title: str, description: str) -> None:
         </div>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def render_time_component() -> None:
+    """Render a live, themed time component for the app timezone."""
+    now = config.now_in_app_tz()
+    components.html(
+        f"""
+        <div class="facesync-time-card">
+            <div class="facesync-time-meta">
+                <div class="facesync-time-label">Live App Time</div>
+                <div class="facesync-time-zone">Timezone: {config.APP_TIMEZONE}</div>
+            </div>
+            <div>
+                <div id="facesync-time-value" class="facesync-time-value">--:--:--</div>
+                <div id="facesync-time-date" class="facesync-time-date">--</div>
+            </div>
+        </div>
+
+        <script>
+            (function() {{
+                const startServer = new Date("{now.isoformat()}");
+                const startClientMs = Date.now();
+                const timeEl = document.getElementById("facesync-time-value");
+                const dateEl = document.getElementById("facesync-time-date");
+
+                function pad(n) {{
+                    return String(n).padStart(2, "0");
+                }}
+
+                function render() {{
+                    const elapsed = Date.now() - startClientMs;
+                    const current = new Date(startServer.getTime() + elapsed);
+                    const h = pad(current.getHours());
+                    const m = pad(current.getMinutes());
+                    const s = pad(current.getSeconds());
+                    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+                    timeEl.textContent = `${{h}}:${{m}}:${{s}}`;
+                    dateEl.textContent = `${{days[current.getDay()]}}, ${{current.getDate()}} ${{months[current.getMonth()]}} ${{current.getFullYear()}}`;
+                }}
+
+                render();
+                setInterval(render, 1000);
+            }})();
+        </script>
+        """,
+        height=122,
     )
 
 def check_auth():

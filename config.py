@@ -1,6 +1,9 @@
 import os
+import time
 import logging
 import warnings
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -27,6 +30,22 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Database
 DB_FILE = os.getenv("DB_FILE", os.getenv("DB_NAME", "attendance.db")).strip()
+
+# Timezone Configuration
+APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Kolkata").strip() or "Asia/Kolkata"
+APP_TZINFO = ZoneInfo(APP_TIMEZONE)
+
+
+def now_in_app_tz() -> datetime:
+	"""Return current datetime in configured app timezone."""
+	return datetime.now(APP_TZINFO)
+
+
+def apply_process_timezone() -> None:
+	"""Set process timezone for schedulers that use localtime semantics."""
+	os.environ["TZ"] = APP_TIMEZONE
+	if hasattr(time, "tzset"):
+		time.tzset()
 
 # Face Recognition
 MODEL_NAME = "Facenet512"

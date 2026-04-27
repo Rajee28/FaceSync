@@ -18,11 +18,20 @@ logging.getLogger("twilio").setLevel(logging.WARNING)
 logging.getLogger("twilio.http_client").setLevel(logging.WARNING)
 
 _TWILIO_AUTH_FAILED = False
+APP_URL = "https://facesync.streamlit.app/"
 _CALENDAR_CACHE = {
     "path": None,
     "mtime": None,
     "status_by_date": {},
 }
+
+
+def _with_app_link(message: str) -> str:
+    """Ensure every outgoing alert/report message includes the app URL."""
+    base_message = (message or "").rstrip()
+    if APP_URL in base_message:
+        return base_message
+    return f"{base_message}\n\nOpen FaceSync: {APP_URL}"
 
 
 def _resolve_calendar_csv_path() -> str:
@@ -107,7 +116,7 @@ def _get_calendar_status_by_date() -> dict:
 
 def _should_run_alert_jobs(target_date=None) -> bool:
     """Return True only when calendar STATUS for date is 1."""
-    check_date = target_date or datetime.now().date()
+    check_date = target_date or config.now_in_app_tz().date()
     status_map = _get_calendar_status_by_date()
     raw_status = status_map.get(check_date)
 
@@ -162,6 +171,8 @@ def send_email_alert(
         msg["From"] = f"{config.EMAIL_FROM_NAME} <{config.EMAIL_USER}>"
         msg["To"] = ", ".join(recipients)
 
+        enriched_message = _with_app_link(message)
+
         # Create HTML version of the message
         html_content = f"""
         <html>
@@ -181,8 +192,9 @@ def send_email_alert(
                     <h2>📢 Attendance Alert</h2>
                 </div>
                 <div class="content">
-                    <p>{message}</p>
-                    <p><strong>Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p>{enriched_message.replace(chr(10), '<br>')}</p>
+                    <p><strong>Time:</strong> {config.now_in_app_tz().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p><strong>FaceSync App:</strong> <a href="{APP_URL}">{APP_URL}</a></p>
                 </div>
                 <div class="footer">
                     <p>This is an automated message from the FaceSync.</p>
@@ -193,7 +205,7 @@ def send_email_alert(
         """
 
         # Attach both plain text and HTML versions
-        msg.attach(MIMEText(message, "plain"))
+        msg.attach(MIMEText(enriched_message, "plain"))
         msg.attach(MIMEText(html_content, "html"))
 
         # Connect to SMTP server and send
@@ -268,6 +280,8 @@ def send_sms_alert(
         return {"success": False, "message": "No phone numbers provided", "results": []}
 
     try:
+        enriched_message = _with_app_link(message)
+
         from twilio.rest import Client
 
         client = Client(config.TWILIO_SID, config.TWILIO_TOKEN)
@@ -284,7 +298,9 @@ def send_sms_alert(
 
                 # Send the SMS
                 sms = client.messages.create(
-                    body=message, from_=config.TWILIO_PHONE_NUMBER, to=clean_phone
+                    body=enriched_message,
+                    from_=config.TWILIO_PHONE_NUMBER,
+                    to=clean_phone,
                 )
 
                 results.append({"phone": clean_phone, "status": "sent", "sid": sms.sid})
@@ -380,6 +396,8 @@ def send_whatsapp_alert(
         return {"success": False, "message": "No phone numbers provided", "results": []}
 
     try:
+        enriched_message = _with_app_link(message)
+
         from twilio.rest import Client
 
         client = Client(config.TWILIO_SID, config.TWILIO_TOKEN)
@@ -401,7 +419,9 @@ def send_whatsapp_alert(
 
                 # Send the WhatsApp message
                 wa_message = client.messages.create(
-                    body=message, from_=whatsapp_from, to=whatsapp_to
+                    body=enriched_message,
+                    from_=whatsapp_from,
+                    to=whatsapp_to,
                 )
 
                 results.append(
@@ -483,7 +503,7 @@ def send_alert(
     logger.info("=" * 50)
 
     results = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": config.now_in_app_tz().isoformat(),
         "message": message,
         "platforms": {},
     }
@@ -553,7 +573,7 @@ def job_absent_check():
     logger.info("Running Absent Check Job...")
     conn = database.get_connection()
     c = conn.cursor()
-    today = datetime.now().date()
+    today = config.now_in_app_tz().date()
 
     try:
         # Get all staff with their contact info
@@ -646,7 +666,7 @@ def job_out_punch_check():
     logger.info("Running Out Punch Check Job...")
     conn = database.get_connection()
     c = conn.cursor()
-    today = datetime.now().date()
+    today = config.now_in_app_tz().date()
 
     try:
         # Get staff who punched in but haven't punched out
@@ -723,7 +743,7 @@ def job_end_of_day_report(force: bool = False):
         return
 
     logger.info("Running End of Day Report Job...")
-    now = datetime.now()
+    now = config.now_in_app_tz()
     report_hour = 18
 
     # Safety guard: avoid accidental early execution from manual/duplicate triggers.
@@ -853,15 +873,17 @@ def run_scheduler():
     Main scheduler loop. Runs the scheduled jobs at specified times.
     """
     logger.info("Starting job scheduler setup...")
+    config.apply_process_timezone()
+    logger.info("Scheduler timezone set to %s", config.APP_TIMEZONE)
 
     # Morning absent check (before work hours)
-    schedule.every().day.at("07:55").do(job_absent_check)
+    schedule.every().day.at("07:55", config.APP_TIMEZONE).do(job_absent_check)
 
     # Midday out-punch check
-    schedule.every().day.at("12:25").do(job_out_punch_check)
+    schedule.every().day.at("12:25", config.APP_TIMEZONE).do(job_out_punch_check)
 
     # End of day report
-    schedule.every().day.at("18:00").do(job_end_of_day_report)
+    schedule.every().day.at("18:00", config.APP_TIMEZONE).do(job_end_of_day_report)
 
     logger.info("Job scheduler started. Scheduled jobs:")
     logger.info("  - 07:55 AM: Absent check")
@@ -991,7 +1013,7 @@ def test_alert_configuration() -> dict:
     test_subject = "🔔 Test Alert"
 
     results = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": config.now_in_app_tz().isoformat(),
         "email": None,
         "sms": None,
         "whatsapp": None,

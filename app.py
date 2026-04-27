@@ -3,7 +3,6 @@ import database
 import alerts
 import config
 import ui
-from datetime import datetime
 from contextlib import closing
 
 st.set_page_config(page_title="FaceSync", page_icon="📍", layout="wide")
@@ -12,6 +11,7 @@ ui.apply_global_styles(
     "Modern attendance monitoring with face recognition, faster workflows, and cleaner insights.",
 )
 ui.theme_toggle()
+ui.render_time_component()
 
 # Application-Wide Login Gateway
 if "app_logged_in" not in st.session_state:
@@ -100,7 +100,7 @@ try:
         c.execute("SELECT COUNT(*) FROM staff")
         staff_count = c.fetchone()[0]
 
-        today = datetime.now().date()
+        today = config.now_in_app_tz().date()
         c.execute(
             "SELECT COUNT(DISTINCT staff_id) FROM attendance WHERE punch_date = ?",
             (today,),
