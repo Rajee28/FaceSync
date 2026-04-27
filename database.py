@@ -1,7 +1,5 @@
 import sqlite3
-import os
-from datetime import datetime, date
-import json
+from datetime import date
 import numpy as np
 import io
 import config
@@ -22,7 +20,11 @@ sqlite3.register_converter("date", convert_date)
 
 def get_connection():
     """Create a database connection."""
-    conn = sqlite3.connect(config.DB_FILE, check_same_thread=False)
+    conn = sqlite3.connect(
+        config.DB_FILE,
+        check_same_thread=False,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+    )
     return conn
 
 

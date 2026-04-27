@@ -4,6 +4,7 @@ import alerts
 import config
 import ui
 from datetime import datetime
+from contextlib import closing
 
 st.set_page_config(page_title="FaceSync", page_icon="📍", layout="wide")
 ui.apply_global_styles(
@@ -18,6 +19,12 @@ if "app_logged_in" not in st.session_state:
 
 if not st.session_state["app_logged_in"]:
     ui.render_login_bg()
+
+    if not config.APP_USERNAME or not config.APP_PASSWORD:
+        st.error(
+            "Application login credentials are not configured. Set APP_USERNAME and APP_PASSWORD in .env."
+        )
+        st.stop()
     
     with st.form("app_login_form"):
         st.markdown("<h2 class='login-title'>FaceSync Portal</h2>", unsafe_allow_html=True)
@@ -26,11 +33,14 @@ if not st.session_state["app_logged_in"]:
         username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
         password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
         
-        submit_btn = st.form_submit_button("LOGIN", use_container_width=True)
+        submit_btn = st.form_submit_button("LOGIN", width="stretch")
         
         
         if submit_btn:
-            if username.strip() == "staff" and password == "pass":
+            if (
+                username.strip() == config.APP_USERNAME
+                and password == config.APP_PASSWORD
+            ):
                 st.session_state["app_logged_in"] = True
                 st.rerun()
             else:
@@ -85,18 +95,18 @@ with c3:
 
 # Show some quick stats if DB is ready
 try:
-    conn = database.get_connection()
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM staff")
-    staff_count = c.fetchone()[0]
+    with closing(database.get_connection()) as conn:
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM staff")
+        staff_count = c.fetchone()[0]
 
-    today = datetime.now().date()
-    c.execute(
-        "SELECT COUNT(DISTINCT staff_id) FROM attendance WHERE punch_date = ?",
-        (today,),
-    )
-    present_count = c.fetchone()[0]
-    absent_count = max(staff_count - present_count, 0)
+        today = datetime.now().date()
+        c.execute(
+            "SELECT COUNT(DISTINCT staff_id) FROM attendance WHERE punch_date = ?",
+            (today,),
+        )
+        present_count = c.fetchone()[0]
+        absent_count = max(staff_count - present_count, 0)
 
     st.markdown("### Live Snapshot")
     col1, col2, col3 = st.columns(3)
@@ -106,6 +116,5 @@ try:
         st.metric("Present Today", present_count)
     with col3:
         st.metric("Absent Today", absent_count)
-    conn.close()
 except Exception as e:
     st.warning("Database not ready yet.")

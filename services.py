@@ -1,9 +1,8 @@
 import database
 import face_utils
 import attendance_logic
-from datetime import datetime
 import pandas as pd
-import config
+import sqlite3
 
 
 class StaffService:
@@ -22,6 +21,8 @@ class StaffService:
             )
             conn.commit()
             return True, f"Staff {name} ({staff_id}) registered successfully!"
+        except sqlite3.IntegrityError:
+            return False, f"Staff ID {staff_id} already exists."
         except Exception as e:
             return False, f"Error saving to database: {e}"
         finally:
@@ -103,12 +104,10 @@ class StaffService:
 
         return known_ids, known_names, known_encodings
 
-        return known_ids, known_names, known_encodings
-
 
 class AttendanceService:
     @staticmethod
-    def mark_attendance(staff_id, name, current_date, current_time):
+    def mark_attendance(staff_id, _name, current_date, current_time):
         """Mark attendance for a staff member."""
         conn = database.get_connection()
         c = conn.cursor()
@@ -148,6 +147,17 @@ class AttendanceService:
                 result = attendance_logic.check_in_status(current_time, counters_dict)
                 status = result["status"]
                 updates = result["updates"]
+
+                # Hard-fail after configured punch-in cut-off.
+                # Do not create attendance rows or update counters for this case.
+                if status == "Punch In Time Over - Full day leave":
+                    return (
+                        False,
+                        (
+                            f"Punch In Failed at {current_time.strftime('%H:%M:%S')}: "
+                            "Punch-in window is closed. Attendance was not recorded."
+                        ),
+                    )
 
                 # Update Counters
                 if updates["grace"]:

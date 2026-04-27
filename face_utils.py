@@ -1,6 +1,5 @@
 from deepface import DeepFace
 import numpy as np
-import cv2
 from PIL import Image
 import config
 
@@ -60,9 +59,13 @@ def match_face(unknown_encoding, known_encodings, tolerance=0.5):
     best_index = -1
 
     unknown_norm = np.linalg.norm(unknown_encoding)
+    if unknown_norm == 0:
+        return None
 
     for i, known in enumerate(known_encodings):
         known_norm = np.linalg.norm(known)
+        if known_norm == 0:
+            continue
         # Cosine distance
         sim = np.dot(unknown_encoding, known) / (unknown_norm * known_norm)
         dist = 1 - sim
@@ -72,7 +75,7 @@ def match_face(unknown_encoding, known_encodings, tolerance=0.5):
             best_index = i
 
     # Threshold for Facenet512 cosine distance is usually around 0.4
-    if best_score < 0.4:
+    if best_score < tolerance:
         return best_index
 
     return None

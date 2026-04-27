@@ -59,7 +59,7 @@ with st.form("register_form"):
         uploaded_file = st.file_uploader("Or provide a high-quality photo", type=["jpg", "png", "jpeg"])
         
         st.markdown("<br>", unsafe_allow_html=True)
-        submitted = st.form_submit_button("Register New Staff", use_container_width=True)
+        submitted = st.form_submit_button("Register New Staff", width="stretch")
 
 if submitted:
     if not (staff_id and name):

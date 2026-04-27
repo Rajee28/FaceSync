@@ -17,6 +17,10 @@ if "admin_logged_in" not in st.session_state:
     st.session_state["admin_logged_in"] = False
 
 if not st.session_state["admin_logged_in"]:
+    if not config.ADMIN_PASSWORD:
+        st.error("Admin password is not configured. Set ADMIN_PASSWORD in .env.")
+        st.stop()
+
     ui.glass_info_card(
         "Secure Access",
         "Enter admin credentials to access management tools and configuration controls.",
@@ -24,7 +28,7 @@ if not st.session_state["admin_logged_in"]:
     auth_col1, auth_col2, auth_col3 = st.columns([1, 1.4, 1])
     with auth_col2:
         pwd = st.text_input("Enter Admin Password", type="password")
-        if st.button("Login", use_container_width=True):
+        if st.button("Login", width="stretch"):
             if pwd == config.ADMIN_PASSWORD:
                 st.session_state["admin_logged_in"] = True
                 st.rerun()
@@ -52,7 +56,7 @@ if editor_func:
     edited_df = editor_func(
         staff_df,
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         disabled=["face_encoding"],
         key="staff_editor",
@@ -169,10 +173,11 @@ with st.expander("Update Attendance Record"):
                 "Permission",
                 "Half Day Leave - Forenoon",
                 "Half Day Leave - Afternoon",
+                "Punch In Time Over - Full day leave",
             ],
         )
 
-        submit_upd = st.form_submit_button("Update Record", use_container_width=True)
+        submit_upd = st.form_submit_button("Update Record", width="stretch")
 
         if submit_upd and u_staff_id:
             success, message = services.AttendanceService.update_attendance_record(
@@ -199,7 +204,7 @@ with st.expander("Send Alert to Staff"):
             format_func=lambda x: f"{x} - {staff_list[staff_list['staff_id']==x]['name'].iloc[0]}",
         )
 
-        send_alert_btn = st.form_submit_button("Send Alert", use_container_width=True)
+        send_alert_btn = st.form_submit_button("Send Alert", width="stretch")
 
         if send_alert_btn:
             if not alert_message.strip():
@@ -216,13 +221,13 @@ with st.expander("Send Alert to Staff"):
                         )
 
                         if result.get("success", False):
-                            st.success("Alerts sent successfully!")
+                            st.success(result.get("message", "Alerts sent successfully!"))
 
                             # Show details
                             with st.expander("Alert Details"):
-                                st.json(result)
+                                st.json(result.get("staff_results", {}))
                         else:
-                            st.error("Failed to send alerts. Check configuration.")
+                            st.error(result.get("message", "Failed to send alerts. Check configuration."))
                             st.json(result)
 
                     except Exception as e:

@@ -8,12 +8,124 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from dotenv import load_dotenv
 import config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+if not logging.getLogger().handlers:
+    logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.getLogger("twilio").setLevel(logging.WARNING)
+logging.getLogger("twilio.http_client").setLevel(logging.WARNING)
+
+_TWILIO_AUTH_FAILED = False
+_CALENDAR_CACHE = {
+    "path": None,
+    "mtime": None,
+    "status_by_date": {},
+}
+
+
+def _resolve_calendar_csv_path() -> str:
+    """Resolve calendar CSV path from config, supporting both absolute and relative paths."""
+    configured = config.ALERT_CALENDAR_CSV
+    if os.path.isabs(configured):
+        return configured
+    return os.path.join(os.path.dirname(__file__), configured)
+
+
+def _get_calendar_status_by_date() -> dict:
+    """
+    Load DATE->STATUS mapping from calendar CSV.
+
+    The CSV must include DATE and STATUS columns where DATE is dd-mm-YYYY and
+    STATUS uses 1 for active alert days.
+    """
+    path = _resolve_calendar_csv_path()
+
+    if not os.path.exists(path):
+        logger.warning("Calendar CSV not found at %s. Scheduler will not run jobs.", path)
+        return {}
+
+    mtime = os.path.getmtime(path)
+    if _CALENDAR_CACHE["path"] == path and _CALENDAR_CACHE["mtime"] == mtime:
+        return _CALENDAR_CACHE["status_by_date"]
+
+    status_map = {}
+    date_idx = None
+    status_idx = None
+
+    with open(path, "r", encoding="utf-8-sig") as f:
+        for line_number, raw_line in enumerate(f, start=1):
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            columns = [col.strip() for col in line.split(",")]
+
+            if line_number == 1:
+                headers = [h.upper() for h in columns]
+                try:
+                    date_idx = headers.index("DATE")
+                    status_idx = headers.index("STATUS")
+                except ValueError:
+                    logger.warning(
+                        "Calendar CSV must contain DATE and STATUS headers. Scheduler will not run jobs."
+                    )
+                    return {}
+                continue
+
+            if date_idx is None or status_idx is None:
+                continue
+
+            if len(columns) <= max(date_idx, status_idx):
+                continue
+
+            date_str = columns[date_idx]
+            status_str = columns[status_idx]
+
+            if not date_str:
+                continue
+
+            try:
+                day = datetime.strptime(date_str, "%d-%m-%Y").date()
+            except ValueError:
+                logger.warning(
+                    "Skipping invalid DATE '%s' in calendar CSV at line %d",
+                    date_str,
+                    line_number,
+                )
+                continue
+
+            status_map[day] = status_str
+
+    _CALENDAR_CACHE["path"] = path
+    _CALENDAR_CACHE["mtime"] = mtime
+    _CALENDAR_CACHE["status_by_date"] = status_map
+
+    return status_map
+
+
+def _should_run_alert_jobs(target_date=None) -> bool:
+    """Return True only when calendar STATUS for date is 1."""
+    check_date = target_date or datetime.now().date()
+    status_map = _get_calendar_status_by_date()
+    raw_status = status_map.get(check_date)
+
+    if raw_status is None:
+        logger.info(
+            "Skipping alert jobs for %s: no DATE entry found in calendar CSV.",
+            check_date,
+        )
+        return False
+
+    should_run = str(raw_status).strip() == "1"
+    if not should_run:
+        logger.info(
+            "Skipping alert jobs for %s: STATUS=%s in calendar CSV.",
+            check_date,
+            raw_status,
+        )
+    return should_run
 
 
 # =====================================================
@@ -21,7 +133,9 @@ logger = logging.getLogger(__name__)
 # =====================================================
 
 
-def send_email_alert(subject: str, message: str, recipients: list) -> dict:
+def send_email_alert(
+    subject: str, message: str, recipients: list, recipient_name: str = "Unknown"
+) -> dict:
     """
     Send an email alert to the specified recipients.
 
@@ -89,6 +203,7 @@ def send_email_alert(subject: str, message: str, recipients: list) -> dict:
             server.sendmail(config.EMAIL_USER, recipients, msg.as_string())
 
         logger.info(f"Email sent successfully to {len(recipients)} recipient(s)")
+        logger.info(f"Alert sent to {recipient_name} via email")
         return {
             "success": True,
             "message": f"Email sent to {len(recipients)} recipient(s)",
@@ -110,7 +225,9 @@ def send_email_alert(subject: str, message: str, recipients: list) -> dict:
 # =====================================================
 
 
-def send_sms_alert(message: str, phone_numbers: list) -> dict:
+def send_sms_alert(
+    message: str, phone_numbers: list, recipient_name: str = "Unknown"
+) -> dict:
     """
     Send an SMS alert via Twilio to the specified phone numbers.
 
@@ -121,6 +238,15 @@ def send_sms_alert(message: str, phone_numbers: list) -> dict:
     Returns:
         dict with 'success' boolean, 'message' string, and 'results' list
     """
+    global _TWILIO_AUTH_FAILED
+
+    if _TWILIO_AUTH_FAILED:
+        return {
+            "success": False,
+            "message": "Twilio authentication previously failed. Skipping SMS alerts.",
+            "results": [],
+        }
+
     if not config.TWILIO_SID or not config.TWILIO_TOKEN:
         logger.warning("Twilio credentials not configured. Skipping SMS alert.")
         return {
@@ -164,10 +290,24 @@ def send_sms_alert(message: str, phone_numbers: list) -> dict:
                 results.append({"phone": clean_phone, "status": "sent", "sid": sms.sid})
                 success_count += 1
                 logger.info(f"SMS sent to {clean_phone}, SID: {sms.sid}")
+                logger.info(f"Alert sent to {recipient_name} via sms")
 
             except Exception as e:
                 results.append({"phone": phone, "status": "failed", "error": str(e)})
                 logger.error(f"Failed to send SMS to {phone}: {str(e)}")
+
+                # Twilio error 20003 = authentication failure.
+                if "20003" in str(e) or "Authenticate" in str(e):
+                    _TWILIO_AUTH_FAILED = True
+                    logger.error(
+                        "Twilio authentication failed. Disabling SMS/WhatsApp alerts for this run."
+                    )
+                    logger.error(
+                        "Twilio auth diagnostics: sid_prefix=%s token_length=%s",
+                        (config.TWILIO_SID[:6] + "...") if config.TWILIO_SID else "(empty)",
+                        len(config.TWILIO_TOKEN) if config.TWILIO_TOKEN else 0,
+                    )
+                    break
 
         return {
             "success": success_count > 0,
@@ -192,7 +332,9 @@ def send_sms_alert(message: str, phone_numbers: list) -> dict:
 # =====================================================
 
 
-def send_whatsapp_alert(message: str, phone_numbers: list) -> dict:
+def send_whatsapp_alert(
+    message: str, phone_numbers: list, recipient_name: str = "Unknown"
+) -> dict:
     """
     Send a WhatsApp message via Twilio WhatsApp Business API.
 
@@ -206,6 +348,15 @@ def send_whatsapp_alert(message: str, phone_numbers: list) -> dict:
     Returns:
         dict with 'success' boolean, 'message' string, and 'results' list
     """
+    global _TWILIO_AUTH_FAILED
+
+    if _TWILIO_AUTH_FAILED:
+        return {
+            "success": False,
+            "message": "Twilio authentication previously failed. Skipping WhatsApp alerts.",
+            "results": [],
+        }
+
     if not config.TWILIO_SID or not config.TWILIO_TOKEN:
         logger.warning("Twilio credentials not configured. Skipping WhatsApp alert.")
         return {
@@ -260,10 +411,24 @@ def send_whatsapp_alert(message: str, phone_numbers: list) -> dict:
                 logger.info(
                     f"WhatsApp message sent to {clean_phone}, SID: {wa_message.sid}"
                 )
+                logger.info(f"Alert sent to {recipient_name} via whatsapp")
 
             except Exception as e:
                 results.append({"phone": phone, "status": "failed", "error": str(e)})
                 logger.error(f"Failed to send WhatsApp to {phone}: {str(e)}")
+
+                # Twilio error 20003 = authentication failure.
+                if "20003" in str(e) or "Authenticate" in str(e):
+                    _TWILIO_AUTH_FAILED = True
+                    logger.error(
+                        "Twilio authentication failed. Disabling SMS/WhatsApp alerts for this run."
+                    )
+                    logger.error(
+                        "Twilio auth diagnostics: sid_prefix=%s token_length=%s",
+                        (config.TWILIO_SID[:6] + "...") if config.TWILIO_SID else "(empty)",
+                        len(config.TWILIO_TOKEN) if config.TWILIO_TOKEN else 0,
+                    )
+                    break
 
         return {
             "success": success_count > 0,
@@ -294,6 +459,7 @@ def send_alert(
     subject: str = "Attendance Alert",
     phone_numbers: list = None,
     platforms: list = None,
+    recipient_name: str = "Unknown",
 ) -> dict:
     """
     Send alerts via multiple platforms (Email, SMS, WhatsApp).
@@ -334,15 +500,21 @@ def send_alert(
 
     # Send via Email
     if "email" in platforms and recipients:
-        results["platforms"]["email"] = send_email_alert(subject, message, recipients)
+        results["platforms"]["email"] = send_email_alert(
+            subject, message, recipients, recipient_name=recipient_name
+        )
 
     # Send via SMS
     if "sms" in platforms and phone_numbers:
-        results["platforms"]["sms"] = send_sms_alert(message, phone_numbers)
+        results["platforms"]["sms"] = send_sms_alert(
+            message, phone_numbers, recipient_name=recipient_name
+        )
 
     # Send via WhatsApp
     if "whatsapp" in platforms and phone_numbers:
-        results["platforms"]["whatsapp"] = send_whatsapp_alert(message, phone_numbers)
+        results["platforms"]["whatsapp"] = send_whatsapp_alert(
+            message, phone_numbers, recipient_name=recipient_name
+        )
 
     # If no platforms were configured or available, log as mock
     if not results["platforms"]:
@@ -350,6 +522,7 @@ def send_alert(
         logger.info(f"Message: {message}")
         logger.info(f"Would send to emails: {recipients}")
         logger.info(f"Would send to phones: {phone_numbers}")
+        logger.info(f"Alert sent to {recipient_name} via mock")
         logger.info("--- END MOCK ALERT ---")
         results["platforms"]["mock"] = {
             "success": True,
@@ -374,6 +547,9 @@ def job_absent_check():
     Run at 7:55 AM. Check who hasn't punched in.
     Sends reminder alerts to staff who haven't marked their attendance.
     """
+    if not _should_run_alert_jobs():
+        return
+
     logger.info("Running Absent Check Job...")
     conn = database.get_connection()
     c = conn.cursor()
@@ -381,7 +557,13 @@ def job_absent_check():
 
     try:
         # Get all staff with their contact info
-        c.execute("SELECT staff_id, name, email, mobile_number FROM staff")
+        c.execute(
+            """
+            SELECT staff_id, name, email, mobile_number
+            FROM staff
+            ORDER BY created_at DESC, id DESC
+            """
+        )
         all_staff = c.fetchall()
 
         # Get present staff for today
@@ -429,6 +611,7 @@ Thank you!"""
                         subject="⏰ Attendance Reminder - Please Punch In",
                         phone_numbers=None,
                         platforms=["email"],
+                        recipient_name=name,
                     )
 
                 # phone alerts separately with shorter text
@@ -436,9 +619,11 @@ Thank you!"""
                     config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
                 ):
                     if config.ENABLE_SMS_ALERTS:
-                        send_sms_alert(sms_message, [phone])
+                        send_sms_alert(sms_message, [phone], recipient_name=name)
                     if config.ENABLE_WHATSAPP_ALERTS:
-                        send_whatsapp_alert(sms_message, [phone])
+                        send_whatsapp_alert(
+                            sms_message, [phone], recipient_name=name
+                        )
 
             logger.info(f"Sent absent check alerts to {len(absentees)} staff member(s)")
         else:
@@ -455,6 +640,9 @@ def job_out_punch_check():
     Run at 12:25 PM. Check who hasn't punched out.
     Useful for half-day tracking or lunch break reminders.
     """
+    if not _should_run_alert_jobs():
+        return
+
     logger.info("Running Out Punch Check Job...")
     conn = database.get_connection()
     c = conn.cursor()
@@ -468,6 +656,7 @@ def job_out_punch_check():
             FROM attendance a
             JOIN staff s ON a.staff_id = s.staff_id
             WHERE a.punch_date = ? AND a.out_time IS NULL
+            ORDER BY s.created_at DESC, s.id DESC
         """,
             (today,),
         )
@@ -498,15 +687,18 @@ Thank you!"""
                         subject="📤 Reminder - Please Punch Out",
                         phone_numbers=None,
                         platforms=["email"],
+                        recipient_name=name,
                     )
 
                 if phone and (
                     config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
                 ):
                     if config.ENABLE_SMS_ALERTS:
-                        send_sms_alert(sms_message, [phone])
+                        send_sms_alert(sms_message, [phone], recipient_name=name)
                     if config.ENABLE_WHATSAPP_ALERTS:
-                        send_whatsapp_alert(sms_message, [phone])
+                        send_whatsapp_alert(
+                            sms_message, [phone], recipient_name=name
+                        )
 
             logger.info(
                 f"Sent out-punch reminders to {len(staff_pending_out)} staff member(s)"
@@ -520,16 +712,47 @@ Thank you!"""
         conn.close()
 
 
-def job_end_of_day_report():
+def job_end_of_day_report(force: bool = False):
     """
     Run at 6:00 PM. Send daily attendance summary to admins.
+
+    Args:
+        force: If True, bypass the 6:00 PM safety guard.
     """
+    if not _should_run_alert_jobs():
+        return
+
     logger.info("Running End of Day Report Job...")
+    now = datetime.now()
+    report_hour = 18
+
+    # Safety guard: avoid accidental early execution from manual/duplicate triggers.
+    if not force and now.hour < report_hour:
+        logger.warning(
+            "Skipping End of Day Report: current time %s is before %02d:00",
+            now.strftime("%H:%M:%S"),
+            report_hour,
+        )
+        return
+
     conn = database.get_connection()
     c = conn.cursor()
-    today = datetime.now().date()
+    today = now.date()
 
     try:
+        # Any staff who still have no out-punch by report time are marked as half-day afternoon.
+        c.execute(
+            """
+            UPDATE attendance
+            SET status = ?
+            WHERE punch_date = ?
+              AND in_time IS NOT NULL
+              AND out_time IS NULL
+            """,
+            ("Half Day Leave - Afternoon", today),
+        )
+        conn.commit()
+
         # Get attendance summary
         c.execute("SELECT COUNT(*) FROM staff")
         total_staff = c.fetchone()[0]
@@ -599,13 +822,16 @@ This is an automated daily summary from the FaceSync."""
                     if config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS
                     else ["email"]
                 ),
+                recipient_name="Admin",
             )
             # Send shorter SMS separately
             if phones and (config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS):
                 if config.ENABLE_SMS_ALERTS:
-                    send_sms_alert(sms_message, phones)
+                    send_sms_alert(sms_message, phones, recipient_name="Admin")
                 if config.ENABLE_WHATSAPP_ALERTS:
-                    send_whatsapp_alert(sms_message, phones)
+                    send_whatsapp_alert(
+                        sms_message, phones, recipient_name="Admin"
+                    )
             logger.info("Daily report sent to admin")
         else:
             logger.info("Admin email/phone not configured. Daily report logged only.")
@@ -626,6 +852,8 @@ def run_scheduler():
     """
     Main scheduler loop. Runs the scheduled jobs at specified times.
     """
+    logger.info("Starting job scheduler setup...")
+
     # Morning absent check (before work hours)
     schedule.every().day.at("07:55").do(job_absent_check)
 
@@ -633,12 +861,12 @@ def run_scheduler():
     schedule.every().day.at("12:25").do(job_out_punch_check)
 
     # End of day report
-    schedule.every().day.at("16:00").do(job_end_of_day_report)
+    schedule.every().day.at("18:00").do(job_end_of_day_report)
 
-    logger.info("Scheduler started. Scheduled jobs:")
+    logger.info("Job scheduler started. Scheduled jobs:")
     logger.info("  - 07:55 AM: Absent check")
     logger.info("  - 12:25 PM: Out-punch check")
-    logger.info("  - 04:00 PM: Daily report")
+    logger.info("  - 06:00 PM: Daily report")
 
     while True:
         schedule.run_pending()
@@ -649,6 +877,7 @@ def start_background_scheduler():
     """
     Start the scheduler in a background thread.
     """
+    logger.info("Starting background job scheduler thread...")
     t = threading.Thread(target=run_scheduler, daemon=True)
     t.start()
     logger.info("Background scheduler thread started")
@@ -678,6 +907,13 @@ def send_custom_alert(
     Returns:
         dict with aggregated results for each staff member keyed by staff_id
     """
+    if not staff_ids:
+        return {
+            "success": False,
+            "message": "No staff IDs were provided.",
+            "staff_results": {},
+        }
+
     conn = database.get_connection()
     c = conn.cursor()
 
@@ -688,6 +924,7 @@ def send_custom_alert(
             f"""
             SELECT staff_id, name, email, mobile_number 
             FROM staff WHERE staff_id IN ({placeholders})
+            ORDER BY created_at DESC, id DESC
         """,
             staff_ids,
         )
@@ -707,15 +944,16 @@ def send_custom_alert(
                     subject=subject,
                     phone_numbers=None,
                     platforms=["email"],
+                    recipient_name=name,
                 )
 
             # send via phone if available
             if phone and (config.ENABLE_SMS_ALERTS or config.ENABLE_WHATSAPP_ALERTS):
                 sms_msg = personalised
                 if config.ENABLE_SMS_ALERTS:
-                    send_sms_alert(sms_msg, [phone])
+                    send_sms_alert(sms_msg, [phone], recipient_name=name)
                 if config.ENABLE_WHATSAPP_ALERTS:
-                    send_whatsapp_alert(sms_msg, [phone])
+                    send_whatsapp_alert(sms_msg, [phone], recipient_name=name)
 
             overall_results[sid] = {
                 "name": name,
@@ -724,11 +962,20 @@ def send_custom_alert(
                 "status": "sent",
             }
 
-        return overall_results
+        return {
+            "success": True,
+            "message": f"Alerts processed for {len(overall_results)} staff member(s).",
+            "staff_results": overall_results,
+        }
 
     except Exception as e:
         logger.error(f"Error sending custom alert: {str(e)}")
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "message": "Failed to send custom alerts.",
+            "error": str(e),
+            "staff_results": {},
+        }
     finally:
         conn.close()
 
@@ -753,7 +1000,10 @@ def test_alert_configuration() -> dict:
     # Test Email
     if config.EMAIL_USER and config.EMAIL_PASSWORD:
         results["email"] = send_email_alert(
-            test_subject, test_message, [config.EMAIL_USER]
+            test_subject,
+            test_message,
+            [config.EMAIL_USER],
+            recipient_name="Test Recipient",
         )
     else:
         results["email"] = {"success": False, "message": "Email not configured"}
@@ -765,7 +1015,9 @@ def test_alert_configuration() -> dict:
         and config.TWILIO_PHONE_NUMBER
         and config.ADMIN_PHONE
     ):
-        results["sms"] = send_sms_alert(test_message, [config.ADMIN_PHONE])
+        results["sms"] = send_sms_alert(
+            test_message, [config.ADMIN_PHONE], recipient_name="Test Recipient"
+        )
     elif config.TWILIO_SID and config.TWILIO_TOKEN and config.TWILIO_PHONE_NUMBER:
         results["sms"] = {
             "success": True,
@@ -781,7 +1033,9 @@ def test_alert_configuration() -> dict:
         and config.TWILIO_WHATSAPP_NUMBER
         and config.ADMIN_PHONE
     ):
-        results["whatsapp"] = send_whatsapp_alert(test_message, [config.ADMIN_PHONE])
+        results["whatsapp"] = send_whatsapp_alert(
+            test_message, [config.ADMIN_PHONE], recipient_name="Test Recipient"
+        )
     elif config.TWILIO_SID and config.TWILIO_TOKEN and config.TWILIO_WHATSAPP_NUMBER:
         results["whatsapp"] = {
             "success": True,

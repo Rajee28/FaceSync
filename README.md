@@ -1,192 +1,156 @@
 # FaceSync: Smart Staff Attendance Tracker
 
-A zero-cost, face recognition-based attendance system built with Python, Streamlit, and DeepFace.
+FaceSync is a Streamlit-based staff attendance system that uses face recognition for punch in/out, applies configurable attendance rules, and supports alerting through Email, SMS, and WhatsApp.
 
-## Features
+## Current Capabilities
 
-- **Face Recognition Integration**: Register and punch in/out using facial features
-- **Attendance Rules**: Automatic calculation of Late, Grace, Permission, and Half-Day status
-- **Monthly Counters**: Tracks limits for grace periods and permissions
-- **Reporting**: Daily logs and individual staff history
-- **Multi-Platform Alerts**: Automated notifications via Email, SMS, and WhatsApp
-- **Scheduled Reminders**: Background jobs for attendance reminders and daily reports
-- **Admin Panel**: Manual overrides and staff management
+- Face-based staff registration and attendance marking
+- Attendance state engine with Grace, Late, Permission, Half-Day and Punch-In-Over logic
+- Monthly counters for Grace/Late/Permission usage
+- Daily and staff-wise report views
+- Admin tools for staff management, attendance corrections, and custom alert dispatch
+- Scheduled alert jobs with calendar-based enable/disable control
 
 ## Tech Stack
 
-- **Frontend**: Streamlit
-- **Backend Logic**: Python
-- **Database**: SQLite3
-- **Face Recognition**: DeepFace (Facenet512) + OpenCV
-- **Email**: SMTP (Gmail compatible)
-- **SMS/WhatsApp**: Twilio API
-- **Package Management**: UV
+- Python 3.12+
+- Streamlit (multi-page app)
+- SQLite
+- DeepFace (Facenet512) + NumPy + OpenCV Headless
+- Twilio (optional: SMS/WhatsApp)
+- SMTP (optional: email alerts)
 
-## Installation
+## Project Layout
 
-1. **Clone the repository**
-
-2. **Install dependencies using uv**
-   ```bash
-   uv sync
-   # OR
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
-
-4. **Initialize the Database**
-   ```bash
-   python database.py
-   ```
-   *Note: The app initializes the DB automatically on first run, but running the script ensures schema creation.*
-
-## Usage
-
-1. **Run the Application**
-   ```bash
-   uv run streamlit run app.py
-   ```
-2. **Navigate to "Register"** to add staff members
-3. **Navigate to "Mark Attendance"** to punch in/out
-4. **View "Reports"** for analytics
-
----
-
-## 📢 Alert System
-
-The system includes a comprehensive alert module that sends notifications via **Email**, **SMS**, and **WhatsApp**.
-
-### Supported Platforms
-
-| Platform | Provider | Configuration |
-|----------|----------|---------------|
-| 📧 Email | SMTP (Gmail) | `EMAIL_USER`, `EMAIL_PASSWORD` |
-| 📱 SMS | Twilio | `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE_NUMBER` |
-| 💬 WhatsApp | Twilio | `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_WHATSAPP_NUMBER` |
-
-### Scheduled Jobs
-
-| Time | Job | Description |
-|------|-----|-------------|
-| 07:55 AM | Absent Check | Reminds staff who haven't punched in |
-| 12:25 PM | Out-Punch Check | Reminds staff who haven't punched out |
-| 06:00 PM | Daily Report | Sends attendance summary to admin |
-
-### Alert Configuration
-
-Edit your `.env` file to enable/disable alert platforms:
-
-```env
-# Enable/Disable Platforms
-ENABLE_EMAIL_ALERTS=true
-ENABLE_SMS_ALERTS=false
-ENABLE_WHATSAPP_ALERTS=false
+```text
+FaceSync/
+├── app.py
+├── alerts.py
+├── attendance_logic.py
+├── config.py
+├── database.py
+├── face_utils.py
+├── services.py
+├── ui.py
+├── pages/
+│   ├── 1_Register.py
+│   ├── 2_Mark_Attendance.py
+│   ├── 3_Reports.py
+│   └── 4_Admin.py
+├── .env.example
+├── requirements.txt
+├── pyproject.toml
+└── README.md
 ```
 
-### Email Setup (Gmail)
+## Quick Start
 
-1. Enable 2-Factor Authentication on your Google account
-2. Generate an [App Password](https://support.google.com/accounts/answer/185833)
-3. Configure in `.env`:
-   ```env
-   EMAIL_SMTP_SERVER=smtp.gmail.com
-   EMAIL_SMTP_PORT=587
-   EMAIL_USER=your_email@gmail.com
-   EMAIL_PASSWORD=your_app_password
-   EMAIL_FROM_NAME=FaceSync
-   ```
+1. Clone the repository.
+2. Install dependencies:
 
-### Twilio Setup (SMS & WhatsApp)
+```bash
+uv sync
+# or
+pip install -r requirements.txt
+```
 
-1. Create a [Twilio account](https://www.twilio.com/try-twilio)
-2. Get your Account SID and Auth Token from the [Twilio Console](https://console.twilio.com)
-3. For SMS: Purchase a phone number
-4. For WhatsApp: Set up the [WhatsApp Sandbox](https://www.twilio.com/docs/whatsapp/sandbox) or apply for WhatsApp Business API
-5. Configure in `.env`:
-   ```env
-   TWILIO_SID=your_account_sid
-   TWILIO_TOKEN=your_auth_token
-   TWILIO_PHONE_NUMBER=+1234567890
-   TWILIO_WHATSAPP_NUMBER=+14155238886
-   ```
+3. Create environment file:
 
-### Testing Alerts
+```bash
+cp .env.example .env
+```
 
-Run the alerts module directly to test your configuration:
+4. Update `.env` values for your environment.
+5. (Optional) Initialize schema explicitly:
+
+```bash
+python database.py
+```
+
+6. Run the app:
+
+```bash
+uv run streamlit run app.py
+# or
+streamlit run app.py
+```
+
+## Authentication
+
+Two authentication layers are used:
+
+- App login (main entry): `APP_USERNAME`, `APP_PASSWORD`
+- Admin panel login: `ADMIN_PASSWORD`
+
+No passwords are hardcoded in source files. Set credentials only in your local `.env`.
+
+## Environment Variables
+
+Key variables (see `.env.example` for full list):
+
+- Database: `DB_FILE` (or `DB_NAME` fallback)
+- App login: `APP_USERNAME`, `APP_PASSWORD`
+- Admin: `ADMIN_PASSWORD`, `ADMIN_EMAIL`, `ADMIN_PHONE`
+- Email: `EMAIL_SMTP_SERVER`, `EMAIL_SMTP_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM_NAME`
+- Twilio: `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE_NUMBER`, `TWILIO_WHATSAPP_NUMBER`
+- Alert platform toggles: `ENABLE_EMAIL_ALERTS`, `ENABLE_SMS_ALERTS`, `ENABLE_WHATSAPP_ALERTS`
+- Alert calendar file: `ALERT_CALENDAR_CSV`
+
+## Attendance Windows (Current Rules)
+
+Punch-in windows:
+
+- 07:00-08:00: `Present`
+- 08:01-08:05: `Present (Grace)` if available, then fallback to Late/Permission/Half Day
+- 08:06-08:10: `Late` if available, then fallback to Permission/Half Day
+- 08:11-09:00: `Permission` if available, else `Half Day Leave - Forenoon`
+- 09:01-10:50: `Half Day Leave - Forenoon`
+- After 10:50: `Punch In Time Over - Full day leave` (no record is created)
+
+Punch-out windows:
+
+- 10:30-12:29: `Half Day Leave - Afternoon`
+- 12:30-17:55: `Present`
+- After 17:55: `Half Day Leave - Afternoon`
+- Earlier than valid windows: `Early Leave`
+
+Monthly limits:
+
+- Grace: 5
+- Late: 2
+- Permission: 2
+
+## Scheduled Alerts
+
+Configured jobs:
+
+- 07:55 -> absent check
+- 12:25 -> pending punch-out check
+- 18:00 -> end-of-day summary
+
+Jobs run only when the date has `STATUS=1` in the calendar CSV referenced by `ALERT_CALENDAR_CSV`.
+
+## Alerts
+
+Supported channels:
+
+- Email (SMTP)
+- SMS (Twilio)
+- WhatsApp (Twilio)
+
+You can test channel configuration with:
 
 ```bash
 python alerts.py
 ```
 
-This will check which platforms are configured and display the status.
+## Engineering Notes
 
-### Programmatic Usage
-
-```python
-from alerts import send_alert, send_custom_alert
-
-# Send alert via all configured platforms
-send_alert(
-    message="Meeting in 10 minutes!",
-    recipients=["staff@example.com"],
-    subject="Meeting Reminder",
-    phone_numbers=["+919876543210"]
-)
-
-# Send to specific staff members by ID
-send_custom_alert(
-    staff_ids=["EMP001", "EMP002"],
-    message="Please check in at HR",
-    subject="HR Notice"
-)
-```
-
----
-
-## Deployment (Streamlit Community Cloud)
-
-1. Push code to GitHub
-2. Connect Streamlit Cloud to the repo
-3. Add `requirements.txt`
-4. Create secrets in Streamlit dashboard:
-   ```toml
-   # .streamlit/secrets.toml format
-   EMAIL_USER = "your_email@gmail.com"
-   EMAIL_PASSWORD = "your_app_password"
-   TWILIO_SID = "your_sid"
-   TWILIO_TOKEN = "your_token"
-   ```
-5. Deploy!
-
-## Configuration
-
-| File | Purpose |
-|------|---------|
-| `.env.example` | Template for environment variables |
-| `attendance_logic.py` | Attendance rules (grace period, late threshold, etc.) |
-| `alerts.py` | Alert timing and message templates |
-
-## Project Structure
-
-```
-Staff-Attendance-Manager/
-├── app.py                 # Main Streamlit application
-├── alerts.py              # Alert system (Email/SMS/WhatsApp)
-├── attendance_logic.py    # Business rules for attendance
-├── database.py            # SQLite database operations
-├── face_utils.py          # Face recognition utilities
-├── main.py                # Entry point
-├── pages/                 # Streamlit multi-page app
-├── requirements.txt       # Python dependencies
-├── .env.example           # Environment variables template
-└── README.md              # This file
-```
+- Keep `.env` out of version control.
+- Replace default credentials before deployment.
+- Use absolute or project-relative path for `ALERT_CALENDAR_CSV`.
+- Avoid creating local files named after Python stdlib modules (for example `csv.py`) to prevent import shadowing issues.
 
 ## License
 
-MIT License - Feel free to use and modify for your organization.
+MIT License.

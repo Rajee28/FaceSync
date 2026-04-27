@@ -25,7 +25,7 @@ with tab1:
     df = services.AttendanceService.get_daily_attendance(date_sel)
 
     if not df.empty:
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
         # Stats
         present_count = df[df["status"].str.contains("Present")].shape[0]
@@ -49,7 +49,7 @@ with tab2:
             hist_df = services.AttendanceService.get_staff_history(staff_id)
 
             st.markdown("### Recent Activity")
-            st.dataframe(hist_df, use_container_width=True, hide_index=True)
+            st.dataframe(hist_df, width="stretch", hide_index=True)
 
             # Fetch Counters
             month_str = datetime.now().strftime("%Y-%m")

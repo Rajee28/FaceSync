@@ -68,13 +68,13 @@ def check_in_status(punch_time, current_counters):
         else:
             status = "Half Day Leave - Forenoon"
 
-    # 9:01 - 10:30 (Half Day FN)
+    # 9:01 - 10:50 (Half Day FN)
     elif time(9, 1) <= punch_time <= time_halfday_fn_end:
         status = "Half Day Leave - Forenoon"
 
     else:
-        # After 10:30 AM
-        status = "Half Day Leave - Forenoon"  # Or Full Day Absent based on context, but usually leads to loss of FN.
+        # After configured forenoon cut-off
+        status = "Punch In Time Over - Full day leave"
 
     return {"status": status, "updates": updates}
 
@@ -84,15 +84,18 @@ def check_out_status(punch_time):
     Determine status based on Out-Punch time.
     """
     time_halfday_an_end = time.fromisoformat(config.TIME_HALFDAY_AN_END)
+    time_fullday_end = time.fromisoformat(config.TIME_FULLDAY_END)
 
     # 10:30 AM - 12:29 PM
     if time(10, 30) <= punch_time <= time_halfday_an_end:
         return "Half Day Leave - Afternoon"
 
-    # 12:30 PM - 3:00 PM
-    elif (
-        time(12, 30) <= punch_time
-    ):  # No upper bound specified strictly, assuming <= End of day operation
+    # 12:30 PM - configured full-day end
+    elif time(12, 30) <= punch_time <= time_fullday_end:
         return "Present"
+
+    # After configured full-day end, treat as missed valid punch-out window
+    elif punch_time > time_fullday_end:
+        return "Half Day Leave - Afternoon"
 
     return "Early Leave"
