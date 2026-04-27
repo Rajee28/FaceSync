@@ -150,7 +150,7 @@ python alerts.py
 - Replace default credentials before deployment.
 - Use absolute or project-relative path for `ALERT_CALENDAR_CSV`.
 - Avoid creating local files named after Python stdlib modules (for example `csv.py`) to prevent import shadowing issues.
-- Streamlit Cloud OpenCV fix: this repo includes `packages.txt` (`libgl1`, `libglib2.0-0`) to satisfy DeepFace/cv2 native dependencies.
+- Streamlit Cloud OpenCV fix: this repo includes `packages.txt` (`libgl1`, `libglib2.0-0t64`) to satisfy DeepFace/cv2 native dependencies on Debian trixie.
 
 ## License
 
