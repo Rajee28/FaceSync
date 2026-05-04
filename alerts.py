@@ -194,7 +194,6 @@ def send_email_alert(
                 <div class="content">
                     <p>{enriched_message.replace(chr(10), '<br>')}</p>
                     <p><strong>Time:</strong> {config.now_in_app_tz().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                    <p><strong>FaceSync App:</strong> <a href="{APP_URL}">{APP_URL}</a></p>
                 </div>
                 <div class="footer">
                     <p>This is an automated message from the FaceSync.</p>
